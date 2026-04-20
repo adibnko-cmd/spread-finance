@@ -1,0 +1,167 @@
+/* ═══════════════════════════════════════════════════════════════════
+   SPREAD FINANCE — Styles globaux
+   Design System v1 — variables CSS + reset + utilitaires
+   ═══════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,600&family=Permanent+Marker&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS Variables Design System v1 ────────────────────────────── */
+:root {
+  /* Couleurs primaires */
+  --color-dark:         #292929;
+  --color-white:        #FFFFFF;
+  --color-blue:         #3183F7;
+  --color-blue-dark:    #1a5fc8;
+  --color-blue-light:   #EBF2FF;
+
+  /* Couleurs sémantiques */
+  --color-success:      #36D399;
+  --color-success-light: #E6FAF3;
+  --color-warning:      #FFC13D;
+  --color-warning-light: #FFF8E6;
+  --color-danger:       #F56751;
+  --color-danger-light: #FEF0EE;
+  --color-accent:       #A855F7;
+  --color-accent-light: #F3EFFF;
+
+  /* Gris */
+  --color-gray-50:   #F9FAFB;
+  --color-gray-100:  #F5F6F8;
+  --color-gray-200:  #E8E8E8;
+  --color-gray-300:  #D0D0D0;
+  --color-gray-500:  #888888;
+  --color-gray-700:  #444444;
+
+  /* Typography */
+  --font-sans:   'Work Sans', system-ui, sans-serif;
+  --font-marker: 'Permanent Marker', cursive;
+
+  /* Spacing */
+  --spacing-xs:  4px;
+  --spacing-sm:  8px;
+  --spacing-md:  12px;
+  --spacing-lg:  16px;
+  --spacing-xl:  24px;
+  --spacing-2xl: 32px;
+  --spacing-3xl: 48px;
+  --spacing-4xl: 64px;
+
+  /* Radius */
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   10px;
+  --radius-xl:   12px;
+  --radius-2xl:  16px;
+  --radius-pill: 9999px;
+}
+
+/* ── Reset & Base ───────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-dark);
+  background: var(--color-white);
+  min-height: 100vh;
+}
+
+/* ── Scrollbar personnalisée ────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track { background: var(--color-gray-100); }
+::-webkit-scrollbar-thumb { background: var(--color-gray-300); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-gray-500); }
+
+/* ── Focus ring global (accessibilité) ─────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Sélection de texte ─────────────────────────────────────────── */
+::selection {
+  background: var(--color-blue-light);
+  color: var(--color-blue-dark);
+}
+
+/* ── Utilitaires DS v1 ──────────────────────────────────────────── */
+@layer utilities {
+  .font-marker { font-family: var(--font-marker); }
+
+  /* Plan badges */
+  .badge-free    { @apply bg-gray-100 text-gray-500 text-micro font-bold px-sm py-xs rounded-pill; }
+  .badge-premium { @apply bg-blue-light text-blue-dark text-micro font-bold px-sm py-xs rounded-pill; }
+  .badge-platinum { @apply bg-dark text-white text-micro font-bold px-sm py-xs rounded-pill; }
+  .badge-soon    { @apply bg-warning-light text-warning text-micro font-bold px-sm py-xs rounded-pill; }
+
+  /* Flags */
+  .flag-favorite   { @apply bg-warning-light border border-warning text-amber-700; }
+  .flag-to-review  { @apply bg-danger-light border border-danger text-red-700; }
+  .flag-validated  { @apply bg-success-light border border-success text-green-700; }
+  .flag-to-read    { @apply bg-accent-light border border-accent text-purple-700; }
+
+  /* Domaine couleurs */
+  .domain-finance { color: #3183F7; }
+  .domain-maths   { color: #A855F7; }
+  .domain-dev     { color: #1a5fc8; }
+  .domain-pm      { color: #FFC13D; }
+  .domain-ml      { color: #F56751; }
+}
+
+/* ── Composants réutilisables (layer components) ────────────────── */
+@layer components {
+  /* Bouton primaire */
+  .btn-primary {
+    @apply inline-flex items-center gap-sm px-lg py-sm
+           bg-blue text-white font-bold text-label
+           rounded-md border-none cursor-pointer
+           transition-colors duration-150;
+  }
+  .btn-primary:hover { background: var(--color-blue-dark); }
+
+  /* Bouton secondaire */
+  .btn-secondary {
+    @apply inline-flex items-center gap-sm px-lg py-sm
+           bg-dark text-white font-bold text-label
+           rounded-md border-none cursor-pointer
+           transition-colors duration-150;
+  }
+  .btn-secondary:hover { background: #111; }
+
+  /* Bouton outline */
+  .btn-outline {
+    @apply inline-flex items-center gap-sm px-lg py-sm
+           bg-white text-dark font-bold text-label
+           rounded-md cursor-pointer
+           transition-colors duration-150;
+    border: 1.5px solid var(--color-dark);
+  }
+  .btn-outline:hover { background: var(--color-gray-100); }
+
+  /* Card standard */
+  .card {
+    @apply bg-white rounded-xl p-lg;
+    border: 1.5px solid var(--color-gray-200);
+  }
+
+  /* Card sidebar sombre */
+  .sidebar-dark {
+    background: #1C1C2E;
+    @apply h-full flex flex-col;
+  }
+}
