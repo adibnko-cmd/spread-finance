@@ -6,11 +6,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
-  const router       = useRouter()
   const searchParams = useSearchParams()
   const redirectTo   = searchParams.get('redirectTo') ?? '/dashboard'
   const supabase     = createClient()
@@ -35,8 +34,7 @@ export default function LoginPage() {
       return
     }
 
-    router.push(redirectTo)
-    router.refresh()
+    window.location.href = redirectTo
   }
 
   const handleOAuth = async (provider: 'google' | 'linkedin_oidc') => {

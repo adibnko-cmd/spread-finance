@@ -20,7 +20,8 @@ function planFromPriceId(priceId: string): 'premium' | 'platinum' | 'free' {
 
 export async function POST(request: NextRequest) {
   const body      = await request.text()
-  const signature = headers().get('stripe-signature')!
+  const headersList = await headers()
+  const signature = headersList.get('stripe-signature')!
 
   let event: Stripe.Event
 
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  const supabase = createClient()
+  const supabase = await createClient()
 
   switch (event.type) {
     // ── Abonnement créé / activé ───────────────────────────────

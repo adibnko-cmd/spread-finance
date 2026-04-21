@@ -8,24 +8,22 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-// Auth check désactivé temporairement pour debug
-// if (!user) {
-//   redirect('/auth/login?redirectTo=/dashboard')
-// }
+  if (!user) {
+    redirect('/auth/login?redirectTo=/dashboard')
+  }
 
-const { data: profile } = user ? await supabase
-  .from('profiles')
-  .select('plan, first_name, onboarding_done')
-  .eq('id', user.id)
-  .single() : { data: null }
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('plan, first_name, onboarding_done')
+    .eq('id', user.id)
+    .single()
 
-  // Rediriger vers l'onboarding si non complété
-// if (profile && !profile.onboarding_done) {
-//   redirect('/auth/onboarding')
-// }
+  if (profile && !profile.onboarding_done) {
+    redirect('/auth/onboarding')
+  }
 
   const userPlan = (profile?.plan ?? 'free') as Plan
 
