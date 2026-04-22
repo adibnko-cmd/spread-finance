@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ProgressBar } from '@/components/ui'
 import { getLevel } from '@/types'
@@ -9,7 +10,7 @@ export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) return <div>Non connecté</div>
+  if (!user) redirect('/auth/login?redirectTo=/dashboard')
 
   // Récupérer toutes les données en parallèle
   const [profileRes, progressRes, quizRes, xpRes, activityRes] = await Promise.all([
@@ -57,6 +58,30 @@ export default async function DashboardPage() {
   // Derniers chapitres en cours
   const inProgress = progress.filter(p => p.status === 'in_progress' || p.status === 'completed').slice(0, 3)
 
+  // Streak : nombre de jours consécutifs avec activité
+  const { data: activityDays } = await supabase
+    .from('activity_log')
+    .select('created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  const streak = (() => {
+    const days = Array.from(new Set(
+      (activityDays ?? []).map(a => new Date(a.created_at).toLocaleDateString('fr-FR'))
+    ))
+    if (days.length === 0) return 0
+    const today = new Date().toLocaleDateString('fr-FR')
+    const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('fr-FR')
+    if (days[0] !== today && days[0] !== yesterday) return 0
+    let count = 1
+    for (let i = 1; i < days.length; i++) {
+      const prev = new Date(new Date().setDate(new Date().getDate() - i))
+      if (days[i] === prev.toLocaleDateString('fr-FR')) count++
+      else break
+    }
+    return count
+  })()
+
   const isPremium  = profile?.plan === 'premium' || profile?.plan === 'platinum'
   const firstName  = profile?.first_name ?? 'vous'
 
@@ -73,7 +98,16 @@ export default async function DashboardPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-gray-600">{firstName.substring(0, 1)}.{profile?.last_name?.substring(0, 1) ?? ''}.</span>
+          {/* Streak */}
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+            style={{ background: streak > 0 ? '#FFF3E0' : '#F5F5F5', border: `1.5px solid ${streak > 0 ? '#FFC13D' : '#E8E8E8'}` }}
+          >
+            <span className="text-sm">{streak > 0 ? '🔥' : '💤'}</span>
+            <span className="text-[11px] font-bold" style={{ color: streak > 0 ? '#b37700' : '#9CA3AF' }}>
+              {streak} jour{streak > 1 ? 's' : ''}
+            </span>
+          </div>
           <span
             className="text-[10px] font-bold px-2.5 py-1 rounded-full"
             style={{ background: isPremium ? '#EBF2FF' : '#f0f0f0', color: isPremium ? '#1a5fc8' : '#888' }}

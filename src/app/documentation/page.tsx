@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { getChaptersByDomain } from '@/lib/sanity/client'
 import type { SanityChapter } from '@/types'
+import SearchTrigger from '@/components/ui/SearchTrigger'
 
 export const revalidate = 3600 // Revalidation ISR toutes les heures
 
@@ -17,9 +18,10 @@ type DomainSlug = keyof typeof DOMAIN_META
 export default async function DocumentationPage({
   searchParams,
 }: {
-  searchParams: { domain?: string }
+  searchParams: Promise<{ domain?: string }>
 }) {
-  const activeDomain = (searchParams.domain ?? 'finance') as DomainSlug
+  const { domain } = await searchParams
+  const activeDomain = (domain ?? 'finance') as DomainSlug
 
   let chapters: SanityChapter[] = []
   try {
@@ -57,15 +59,7 @@ export default async function DocumentationPage({
             <div style={{ fontFamily: 'Permanent Marker, cursive', color: '#3183F7', fontSize: 9 }}>Finance</div>
           </div>
         </Link>
-        {/* Recherche */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-full flex-1 max-w-xs mx-8" style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.12)' }}>
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-            <circle cx="6" cy="6" r="4.5" stroke="rgba(255,255,255,.35)" strokeWidth="1.3"/>
-            <path d="M9.5 9.5l2.5 2.5" stroke="rgba(255,255,255,.35)" strokeWidth="1.3" strokeLinecap="round"/>
-          </svg>
-          <span className="text-xs text-white/30 flex-1">Rechercher dans la documentation...</span>
-          <span className="text-[9px] text-white/20 px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,.08)' }}>⌘K</span>
-        </div>
+        <SearchTrigger />
         <Link href="/dashboard" className="text-xs font-bold text-white px-4 py-1.5 rounded-lg" style={{ background: '#3183F7' }}>
           Mon dashboard
         </Link>
@@ -121,7 +115,7 @@ export default async function DocumentationPage({
                             {chs.map(ch => (
                               <Link
                                 key={ch._id}
-                                href={`/documentation/${ch.slug.current}`}
+                                href={`/documentation/${ch.slug}`}
                                 className="flex items-center gap-2 pl-7 pr-4 py-2 hover:bg-gray-100 relative"
                               >
                                 <div className="w-4 h-4 rounded flex-shrink-0 flex items-center justify-center" style={{ background: '#f0f0f0' }}>
@@ -206,7 +200,7 @@ export default async function DocumentationPage({
                   {chs.map((ch, i) => (
                     <Link
                       key={ch._id}
-                      href={`/documentation/${ch.slug.current}`}
+                      href={`/documentation/${ch.slug}`}
                       className="flex items-center gap-3 p-4 rounded-xl hover:shadow-sm transition-shadow"
                       style={{ background: '#fff', border: '1.5px solid #E8E8E8' }}
                     >

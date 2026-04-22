@@ -57,12 +57,22 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: '/dashboard/favorites',
-    label: 'Favoris',
-    plan: 'premium',
+    href: '/dashboard/flashcards',
+    label: 'Flashcards',
     icon: (
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-        <path d="M9 2l1.8 4.5H16l-4 2.9 1.5 4.6L9 11.3l-4.5 2.7 1.5-4.6L2 6.5h5.2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+        <rect x="2" y="4" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.4"/>
+        <path d="M6 8h6M6 11h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
+    href: '/dashboard/leaderboard',
+    label: 'Classement',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <path d="M9 2l1 3h3l-2.5 2 1 3L9 8.5 6.5 10l1-3L5 5h3z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+        <path d="M4 16v-4M9 16v-6M14 16v-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
       </svg>
     ),
   },
@@ -79,10 +89,9 @@ const NAV_ITEMS: NavItem[] = [
 ]
 
 const LOCKED_ITEMS = [
-  { label: 'Flash',    soon: false, plan: 'premium' as Plan },
   { label: 'E-learn',  soon: true  },
   { label: 'Certif.',  soon: true  },
-  { label: 'Jobs',     soon: false, plan: 'premium' as Plan },
+  { label: 'Jobs',     soon: true, plan: 'premium' as Plan },
 ]
 
 interface DashboardSidebarProps {
@@ -96,7 +105,7 @@ export function DashboardSidebar({ userPlan = 'free' }: DashboardSidebarProps) {
     href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href)
 
   const isLocked = (item: NavItem) =>
-    item.plan && (userPlan === 'free' || (item.plan === 'premium' && userPlan === 'free'))
+    !!item.plan && userPlan === 'free'
 
   return (
     <aside
@@ -165,15 +174,54 @@ export function DashboardSidebar({ userPlan = 'free' }: DashboardSidebarProps) {
         })}
       </nav>
 
-      {/* Support */}
-      <div className="px-2 pb-3">
-        <div className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl opacity-30" title="Support">
+      {/* Liens externes */}
+      <div className="px-2 pb-3 flex flex-col gap-0.5">
+        <div className="my-1 mx-2 h-px" style={{ background: 'rgba(255,255,255,.07)' }} />
+        {/* Settings */}
+        <Link
+          href="/dashboard/settings"
+          className={cn(
+            'flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-colors',
+            pathname.startsWith('/dashboard/settings') ? 'bg-white/10' : 'hover:bg-white/6'
+          )}
+          title="Paramètres"
+        >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <circle cx="8" cy="8" r="6" stroke="rgba(255,255,255,.5)" strokeWidth="1.3"/>
-            <path d="M8 5v3M8 11v.5" stroke="rgba(255,255,255,.5)" strokeWidth="1.3" strokeLinecap="round"/>
+            <circle cx="8" cy="8" r="2" stroke="rgba(255,255,255,.4)" strokeWidth="1.3"/>
+            <path d="M8 2v1M8 13v1M2 8h1M13 8h1M3.5 3.5l.7.7M11.8 11.8l.7.7M3.5 12.5l.7-.7M11.8 4.2l.7-.7"
+              stroke="rgba(255,255,255,.4)" strokeWidth="1.3" strokeLinecap="round"/>
           </svg>
-          <span className="text-[8px] text-white/30 font-semibold">Support</span>
-        </div>
+          <span className="text-[8px] font-semibold text-white/30">Réglages</span>
+        </Link>
+        <div className="my-1 mx-2 h-px" style={{ background: 'rgba(255,255,255,.07)' }} />
+        {[
+          { href: '/', label: 'Accueil', icon: (
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 7l6-5 6 5v7a1 1 0 01-1 1H3a1 1 0 01-1-1V7z" stroke="rgba(255,255,255,.4)" strokeWidth="1.3" strokeLinejoin="round"/>
+            </svg>
+          )},
+          { href: '/documentation', label: 'Docs', icon: (
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <rect x="2" y="2" width="12" height="12" rx="2" stroke="rgba(255,255,255,.4)" strokeWidth="1.3"/>
+              <path d="M5 6h6M5 9h4" stroke="rgba(255,255,255,.4)" strokeWidth="1.3" strokeLinecap="round"/>
+            </svg>
+          )},
+          { href: '/articles', label: 'Articles', icon: (
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M3 4h10M3 7h10M3 10h6" stroke="rgba(255,255,255,.4)" strokeWidth="1.3" strokeLinecap="round"/>
+            </svg>
+          )},
+        ].map(({ href, label, icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl hover:bg-white/6 transition-colors"
+            title={label}
+          >
+            {icon}
+            <span className="text-[8px] font-semibold text-white/30">{label}</span>
+          </Link>
+        ))}
       </div>
     </aside>
   )

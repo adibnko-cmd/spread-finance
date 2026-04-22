@@ -34,11 +34,11 @@ export default function HomePage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href="/documentation"
-            className="text-white/50 hover:text-white text-xs font-semibold px-3 py-1"
-          >
+          <Link href="/documentation" className="text-white/50 hover:text-white text-xs font-semibold px-3 py-1">
             Documentation
+          </Link>
+          <Link href="/articles" className="text-white/50 hover:text-white text-xs font-semibold px-3 py-1">
+            Articles
           </Link>
           <Link
             href="/auth/login"

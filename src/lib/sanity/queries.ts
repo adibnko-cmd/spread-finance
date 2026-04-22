@@ -139,5 +139,6 @@ export async function getDocumentationStructure() {
 }
 
 export async function searchContent(query: string) {
-  return sanityClient.fetch(SEARCH_QUERY, { query })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (sanityClient.fetch as any)(SEARCH_QUERY, { query })
 }

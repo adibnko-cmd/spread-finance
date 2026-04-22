@@ -139,6 +139,28 @@ export const chapterSchema = {
             { name: 'caption', title: 'Légende', type: 'string' },
           ],
         },
+        {
+          // Onglets d'exemples
+          type: 'object',
+          name: 'exampleTabs',
+          title: 'Exemples (onglets)',
+          fields: [
+            {
+              name: 'tabs',
+              title: 'Onglets',
+              type: 'array',
+              of: [{
+                type: 'object',
+                name: 'tab',
+                fields: [
+                  { name: 'label',    title: 'Libellé de l\'onglet', type: 'string' },
+                  { name: 'language', title: 'Langage',              type: 'string' },
+                  { name: 'code',     title: 'Contenu',              type: 'text' },
+                ],
+              }],
+            },
+          ],
+        },
       ],
     },
     {
@@ -227,7 +249,38 @@ export const articleSchema = {
     { name: 'excerpt', title: 'Résumé', type: 'text', rows: 3 },
     { name: 'coverImage', title: 'Image de couverture', type: 'image', options: { hotspot: true } },
     { name: 'content', title: 'Contenu', type: 'array',
-      of: [{ type: 'block' }, { type: 'image' }] },
+      of: [
+        { type: 'block' },
+        { type: 'image' },
+        {
+          type: 'object',
+          name: 'exampleTabs',
+          title: 'Exemples (onglets)',
+          fields: [{
+            name: 'tabs',
+            title: 'Onglets',
+            type: 'array',
+            of: [{
+              type: 'object',
+              name: 'tab',
+              fields: [
+                { name: 'label',    title: 'Libellé', type: 'string' },
+                { name: 'language', title: 'Langage',  type: 'string' },
+                { name: 'code',     title: 'Contenu',  type: 'text' },
+              ],
+            }],
+          }],
+        },
+        {
+          type: 'object',
+          name: 'code',
+          title: 'Bloc de code',
+          fields: [
+            { name: 'language', title: 'Langage', type: 'string' },
+            { name: 'code',     title: 'Code',    type: 'text' },
+          ],
+        },
+      ] },
     { name: 'relatedChapters', title: 'Chapitres liés', type: 'array',
       of: [{ type: 'reference', to: [{ type: 'chapter' }] }] },
   ],

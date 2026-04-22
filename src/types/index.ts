@@ -269,6 +269,7 @@ export interface SanityChapter {
   slug: { current: string }
   domain: DomainSlug
   part: number
+  partTitle?: string
   order: number
   accessLevel: 'free' | 'premium'
   estimatedReadingTime: number // minutes
