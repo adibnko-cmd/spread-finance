@@ -26,6 +26,18 @@ const BUILT_IN_CARDS: Record<string, Array<{ front: string; back: string }>> = {
     { front: 'Qu\'est-ce que le Pin Risk ?',                   back: 'Risque pour le vendeur quand le sous-jacent termine exactement au strike à l\'échéance : le payoff bascule brutalement.' },
     { front: 'Pourquoi les options digitales sont-elles risquées à couvrir ?', back: 'Le Delta devient infini au voisinage du strike à l\'échéance : la couverture nécessite des positions énormes.' },
   ],
+  'futures-forwards': [
+    { front: 'Quelle est la différence entre un Forward et un Future ?',     back: 'Forward : contrat OTC sur mesure, pas de chambre de compensation, risque de contrepartie. Future : standardisé, négocié en bourse, compensé avec appels de marge quotidiens.' },
+    { front: 'Qu\'est-ce qu\'un appel de marge (margin call) ?',             back: 'Quand la valeur du compte passe sous le maintenance margin, la chambre de compensation exige un dépôt supplémentaire pour reconstituer la marge initiale.' },
+    { front: 'Quelle est la formule du coût de portage (cost of carry) ?',   back: 'F = S₀ × e^{(r + u − q) × T}\nF = prix future, S₀ = spot, r = taux sans risque, u = stockage, q = dividendes/revenus, T = durée.' },
+    { front: 'Qu\'est-ce que le Contango ?',                                 back: 'Le prix des futures lointains est supérieur au spot. Situation normale pour les actifs stockables. Reflète le coût de portage.' },
+    { front: 'Qu\'est-ce que le Backwardation ?',                            back: 'Le prix spot est supérieur aux futures lointains. Signale une tension physique immédiate : offre insuffisante, stocks bas.' },
+    { front: 'Comment calculer le prix d\'un forward de change ?',           back: 'F = S₀ × e^{(r_domestique − r_étranger) × T}\nSi r_USD > r_EUR → dollar en déport (discount).' },
+    { front: 'Qu\'est-ce que le roll yield pour un ETF futures ?',           back: 'Gain ou perte lors du renouvellement mensuel des contrats. En contango : perte. En backwardation : gain.' },
+    { front: 'Comment couvrir un portefeuille actions avec des futures ?',   back: 'N contrats = (β × Valeur portefeuille) / Valeur notionnelle future. On vend les futures pour réduire le beta.' },
+    { front: 'Qu\'est-ce qu\'un FRA (Forward Rate Agreement) ?',             back: 'Contrat forward sur taux d\'intérêt. Fixe aujourd\'hui le taux applicable à un emprunt futur. Réglé en cash à l\'échéance.' },
+    { front: 'Qu\'est-ce que l\'arbitrage cash-and-carry ?',                 back: 'Si le future est surévalué : emprunter, acheter le spot, vendre le future → profit sans risque. Maintient F = S₀ × e^{rT}.' },
+  ],
 }
 
 export default async function FlashcardsSlugPage({

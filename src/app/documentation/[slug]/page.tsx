@@ -14,6 +14,7 @@ export const dynamic = 'force-dynamic'
 const FLASHCARD_SLUGS = new Set([
   'options-call-put-black-scholes',
   'options-digitales',
+  'futures-forwards',
 ])
 
 const DOMAIN_COLORS: Record<string, string> = {
