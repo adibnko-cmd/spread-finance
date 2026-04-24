@@ -256,33 +256,67 @@ export default async function ChapterPage({
               {domainName}
             </Link>
 
-            <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">Chapitres</div>
+            {/* Chapitres regroupés par partie */}
+            {(() => {
+              type ChapterEntry = { _id: string; slug: string; title: string; domain: string; part: number; partTitle: string; order: number }
+              const byPart = new Map<number, ChapterEntry[]>()
+              for (const c of domainChapters as ChapterEntry[]) {
+                const list = byPart.get(c.part) ?? []
+                list.push(c)
+                byPart.set(c.part, list)
+              }
+              const sortedParts = Array.from(byPart.entries()).sort(([a], [b]) => a - b)
 
-            {domainChapters.map(c => {
-              const isActive = c.slug === slug
-              return (
-                <Link
-                  key={c._id}
-                  href={`/documentation/${c.slug}`}
-                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg mb-0.5 transition-colors"
-                  style={{
-                    background: isActive ? `${domainColor}12` : 'transparent',
-                    border: `1.5px solid ${isActive ? `${domainColor}35` : 'transparent'}`,
-                  }}
-                >
-                  <div
-                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ background: isActive ? domainColor : '#D1D5DB' }}
-                  />
-                  <span
-                    className="text-[11px] leading-snug flex-1"
-                    style={{ color: isActive ? '#111' : '#6B7280', fontWeight: isActive ? 600 : 400 }}
+              return sortedParts.map(([partNum, chapters]) => (
+                <div key={partNum} className="mb-3">
+                  <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 px-1">
+                    Partie {partNum} — {chapters[0].partTitle ?? ''}
+                  </div>
+
+                  {chapters.map(c => {
+                    const isActive = c.slug === slug
+                    return (
+                      <Link
+                        key={c._id}
+                        href={`/documentation/${c.slug}`}
+                        className="flex items-center gap-2 px-2.5 py-2 rounded-lg mb-0.5 transition-colors"
+                        style={{
+                          background: isActive ? `${domainColor}12` : 'transparent',
+                          border: `1.5px solid ${isActive ? `${domainColor}35` : 'transparent'}`,
+                        }}
+                      >
+                        <div
+                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{ background: isActive ? domainColor : '#D1D5DB' }}
+                        />
+                        <span
+                          className="text-[11px] leading-snug flex-1"
+                          style={{ color: isActive ? '#111' : '#6B7280', fontWeight: isActive ? 600 : 400 }}
+                        >
+                          {c.title}
+                        </span>
+                      </Link>
+                    )
+                  })}
+
+                  {/* Lien évaluation de la partie */}
+                  <Link
+                    href={`/evaluation/${chapter.domain}/${partNum}/1`}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg mt-1 mb-0.5 transition-colors hover:bg-gray-100"
+                    style={{ border: `1.5px dashed ${domainColor}50` }}
                   >
-                    {c.title}
-                  </span>
-                </Link>
-              )
-            })}
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <circle cx="5" cy="5" r="3.5" stroke={domainColor} strokeWidth="1.2"/>
+                      <path d="M3.5 5c.2-.6.7-1 1.5-1s1.5.4 1.5 1c0 .8-1.5 1-1.5 1.5" stroke={domainColor} strokeWidth="1.1" strokeLinecap="round"/>
+                      <circle cx="5" cy="7.5" r=".5" fill={domainColor}/>
+                    </svg>
+                    <span className="text-[10px] font-semibold" style={{ color: domainColor }}>
+                      Évaluation de la partie
+                    </span>
+                  </Link>
+                </div>
+              ))
+            })()}
           </div>
         </aside>
 

@@ -119,3 +119,37 @@ export async function getArticles() {
 export async function getArticleBySlug(slug: string) {
   return sanityClient.fetch(ARTICLE_BY_SLUG_QUERY, { slug })
 }
+
+// ── ÉVALUATIONS ───────────────────────────────────────────────────
+
+export const EVALUATION_BY_DOMAIN_PART_LEVEL_QUERY = `
+  *[_type == "evaluation" && domain == $domain && part == $part && level == $level][0] {
+    _id,
+    domain,
+    part,
+    partTitle,
+    level,
+    questions[] {
+      _key,
+      text,
+      competency,
+      explanation,
+      answers[] { text, isCorrect }
+    }
+  }
+`
+
+export const EVALUATIONS_BY_DOMAIN_QUERY = `
+  *[_type == "evaluation" && domain == $domain] | order(part asc, level asc) {
+    _id, domain, part, partTitle, level,
+    "questionCount": count(questions)
+  }
+`
+
+export async function getEvaluation(domain: string, part: number, level: number) {
+  return sanityClient.fetch(EVALUATION_BY_DOMAIN_PART_LEVEL_QUERY, { domain, part, level })
+}
+
+export async function getEvaluationsByDomain(domain: string) {
+  return sanityClient.fetch(EVALUATIONS_BY_DOMAIN_QUERY, { domain })
+}

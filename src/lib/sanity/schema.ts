@@ -336,5 +336,116 @@ export const quizSchema = {
   ],
 }
 
+// ── ÉVALUATION DE PARTIE (QCM Long Format) ──────────────────────
+export const evaluationSchema = {
+  name: 'evaluation',
+  title: 'Évaluation de partie',
+  type: 'document',
+  fields: [
+    {
+      name: 'domain',
+      title: 'Domaine',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Finance de marché',         value: 'finance' },
+          { title: 'Mathématiques financières',  value: 'maths' },
+          { title: 'Développement IT',           value: 'dev' },
+          { title: 'Gestion de projet',          value: 'pm' },
+          { title: 'Machine Learning',           value: 'ml' },
+        ],
+      },
+      validation: (r: any) => r.required(),
+    },
+    {
+      name: 'part',
+      title: 'Numéro de partie',
+      type: 'number',
+      validation: (r: any) => r.required().min(1).max(20),
+    },
+    {
+      name: 'partTitle',
+      title: 'Titre de la partie',
+      type: 'string',
+      validation: (r: any) => r.required(),
+    },
+    {
+      name: 'level',
+      title: 'Niveau (1 = Facile, 2 = Moyen, 3 = Difficile)',
+      type: 'number',
+      options: {
+        list: [
+          { title: '1 — Facile (Free)',        value: 1 },
+          { title: '2 — Moyen (Free)',          value: 2 },
+          { title: '3 — Difficile (Premium)',   value: 3 },
+        ],
+      },
+      validation: (r: any) => r.required(),
+    },
+    {
+      name: 'questions',
+      title: 'Questions (20–30 recommandées)',
+      type: 'array',
+      of: [{
+        type: 'object',
+        name: 'question',
+        fields: [
+          {
+            name: 'text',
+            title: 'Énoncé de la question',
+            type: 'text',
+            rows: 2,
+            validation: (r: any) => r.required(),
+          },
+          {
+            name: 'competency',
+            title: 'Compétence testée (ex: Pricing options, Greeks, Arbitrage…)',
+            type: 'string',
+          },
+          {
+            name: 'explanation',
+            title: 'Explication — correction complète (affichée en résultats pour les Premium)',
+            type: 'text',
+            rows: 3,
+          },
+          {
+            name: 'answers',
+            title: 'Réponses (2 à 5)',
+            type: 'array',
+            of: [{
+              type: 'object',
+              fields: [
+                { name: 'text',      title: 'Texte',            type: 'string' },
+                { name: 'isCorrect', title: 'Bonne réponse ?',  type: 'boolean' },
+              ],
+            }],
+            validation: (r: any) => r.min(2).max(5),
+          },
+        ],
+        preview: {
+          select: { title: 'text', subtitle: 'competency' },
+        },
+      }],
+      validation: (r: any) => r.min(10),
+    },
+  ],
+  preview: {
+    select: { domain: 'domain', part: 'part', partTitle: 'partTitle', level: 'level' },
+    prepare: ({ domain, part, partTitle, level }: any) => ({
+      title: `Évaluation — ${domain} · Partie ${part}`,
+      subtitle: `${partTitle ?? ''} · Niveau ${level}`,
+    }),
+  },
+  orderings: [{
+    title: 'Par domaine, partie et niveau',
+    name: 'domainPartLevel',
+    by: [
+      { field: 'domain', direction: 'asc' },
+      { field: 'part',   direction: 'asc' },
+      { field: 'level',  direction: 'asc' },
+    ],
+  }],
+}
+
 // Export du schéma complet pour sanity.config.ts
-export const schemaTypes = [chapterSchema, articleSchema, quizSchema]
+export const schemaTypes = [chapterSchema, articleSchema, quizSchema, evaluationSchema]
