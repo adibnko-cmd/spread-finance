@@ -129,6 +129,33 @@ export default async function JobsPage() {
   const { data: profile } = await supabase.from('profiles').select('plan').eq('id', user.id).single()
   const isPremium = profile?.plan === 'premium' || profile?.plan === 'platinum'
 
+  // Tenter de charger les offres depuis Supabase (table jobs de la migration 003)
+  // Si la migration n'est pas encore exécutée ou la table vide → fallback sur données statiques
+  let jobs: Job[] = STATIC_JOBS
+  try {
+    const { data: dbJobs } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('is_active', true)
+      .order('posted_at', { ascending: false })
+    if (dbJobs && dbJobs.length > 0) {
+      jobs = dbJobs.map(j => ({
+        id:          String(j.id),
+        title:       j.title,
+        company:     j.company,
+        location:    j.location,
+        type:        j.type as JobType,
+        domain_slug: j.domain_slug,
+        salary_min:  j.salary_min ?? undefined,
+        salary_max:  j.salary_max ?? undefined,
+        description: j.description,
+        tags:        j.tags ?? [],
+        apply_url:   j.apply_url ?? '#',
+        posted_at:   j.posted_at,
+      }))
+    }
+  } catch { /* table jobs absente — migration 003 non exécutée */ }
+
   if (!isPremium) {
     return (
       <div className="p-5 max-w-2xl">
@@ -148,8 +175,8 @@ export default async function JobsPage() {
     )
   }
 
-  const totalJobs = STATIC_JOBS.length
-  const newThisWeek = STATIC_JOBS.filter(j => Date.now() - new Date(j.posted_at).getTime() < 7 * 86400000).length
+  const totalJobs = jobs.length
+  const newThisWeek = jobs.filter(j => Date.now() - new Date(j.posted_at).getTime() < 7 * 86400000).length
 
   return (
     <div className="p-5 max-w-3xl">
@@ -169,9 +196,9 @@ export default async function JobsPage() {
       <div className="grid grid-cols-4 gap-3 mb-5 mt-4">
         {[
           { label: 'Offres actives', value: totalJobs, color: '#3183F7' },
-          { label: 'CDI / CDD',     value: STATIC_JOBS.filter(j => j.type === 'cdi' || j.type === 'cdd').length, color: '#36D399' },
-          { label: 'Stages / Alt.', value: STATIC_JOBS.filter(j => j.type === 'stage' || j.type === 'alternance').length, color: '#A855F7' },
-          { label: 'Freelance',     value: STATIC_JOBS.filter(j => j.type === 'freelance').length, color: '#F56751' },
+          { label: 'CDI / CDD',     value: jobs.filter(j => j.type === 'cdi' || j.type === 'cdd').length, color: '#36D399' },
+          { label: 'Stages / Alt.', value: jobs.filter(j => j.type === 'stage' || j.type === 'alternance').length, color: '#A855F7' },
+          { label: 'Freelance',     value: jobs.filter(j => j.type === 'freelance').length, color: '#F56751' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-white rounded-xl p-3 text-center" style={{ border: '1.5px solid #E8E8E8' }}>
             <div className="text-xl font-black mb-0.5" style={{ color }}>{value}</div>
@@ -182,7 +209,7 @@ export default async function JobsPage() {
 
       {/* Liste des offres */}
       <div className="flex flex-col gap-3">
-        {STATIC_JOBS.map(job => {
+        {jobs.map(job => {
           const typeCfg   = TYPE_CONFIG[job.type]
           const domainCfg = DOMAIN_CONFIG[job.domain_slug] ?? { name: job.domain_slug, color: '#888' }
           const salary    = formatSalary(job.salary_min, job.salary_max, job.type)

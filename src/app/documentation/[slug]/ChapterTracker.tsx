@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from 'react'
 
 interface Props {
   chapterSlug: string
+  chapterTitle?: string
   domainSlug: string
   initialStatus: string
 }
 
-export default function ChapterTracker({ chapterSlug, domainSlug, initialStatus }: Props) {
+export default function ChapterTracker({ chapterSlug, chapterTitle, domainSlug, initialStatus }: Props) {
   const startTime   = useRef(Date.now())
   const lastSave    = useRef(Date.now())
   const scrollPct   = useRef(0)
@@ -21,6 +22,7 @@ export default function ChapterTracker({ chapterSlug, domainSlug, initialStatus 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chapter_slug:       chapterSlug,
+        chapter_title:      chapterTitle,
         domain_slug:        domainSlug,
         status:             overrideStatus ?? (status === 'not_started' ? 'in_progress' : undefined),
         scroll_percent:     scrollPct.current,

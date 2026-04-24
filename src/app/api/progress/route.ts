@@ -7,10 +7,11 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 
 const progressSchema = z.object({
-  chapter_slug:    z.string().min(1),
-  domain_slug:     z.enum(['finance', 'maths', 'dev', 'pm', 'ml']),
-  status:          z.enum(['in_progress', 'completed', 'validated']).optional(),
-  scroll_percent:  z.number().min(0).max(100).optional(),
+  chapter_slug:       z.string().min(1),
+  chapter_title:      z.string().optional(),
+  domain_slug:        z.enum(['finance', 'maths', 'dev', 'pm', 'ml']),
+  status:             z.enum(['in_progress', 'completed', 'validated']).optional(),
+  scroll_percent:     z.number().min(0).max(100).optional(),
   time_spent_seconds: z.number().min(0).optional(),
 })
 
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const { chapter_slug, domain_slug, status, scroll_percent, time_spent_seconds } = parsed.data
+  const { chapter_slug, chapter_title, domain_slug, status, scroll_percent, time_spent_seconds } = parsed.data
 
   // Upsert la progression
   const updateData: Record<string, unknown> = {
@@ -92,6 +93,7 @@ export async function POST(request: NextRequest) {
     action_type:  status === 'validated' ? 'chapter_completed' : 'chapter_opened',
     target_type:  'chapter',
     target_slug:  chapter_slug,
+    target_title: chapter_title ?? null,
   })
 
   return NextResponse.json({ data })

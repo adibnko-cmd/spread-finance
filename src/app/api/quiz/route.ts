@@ -9,6 +9,7 @@ import { sendQuizPassedEmail } from '@/lib/email'
 
 const quizSubmitSchema = z.object({
   chapter_slug:    z.string().min(1),
+  chapter_title:   z.string().optional(),
   domain_slug:     z.enum(['finance', 'maths', 'dev', 'pm', 'ml']),
   quiz_level:      z.number().int().min(1).max(3),
   total_questions: z.number().int().min(1),
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid data' }, { status: 400 })
   }
 
-  const { chapter_slug, domain_slug, quiz_level, total_questions, correct_answers, time_seconds } = parsed.data
+  const { chapter_slug, chapter_title, domain_slug, quiz_level, total_questions, correct_answers, time_seconds } = parsed.data
 
   // Vérifier accès quiz niveau 3 (Premium requis) + charger le profil
   const { data: profile } = await supabase
@@ -85,11 +86,12 @@ export async function POST(request: NextRequest) {
 
   // Log activité
   await supabase.from('activity_log').insert({
-    user_id:     user.id,
-    action_type: 'quiz_completed',
-    target_type: 'quiz',
-    target_slug: chapter_slug,
-    metadata:    { score, passed, quiz_level },
+    user_id:      user.id,
+    action_type:  'quiz_completed',
+    target_type:  'quiz',
+    target_slug:  chapter_slug,
+    target_title: chapter_title ?? null,
+    metadata:     { score, passed, quiz_level },
   })
 
   // Email si quiz réussi (fire-and-forget, pas bloquant)

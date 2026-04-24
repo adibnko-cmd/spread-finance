@@ -408,6 +408,7 @@ export default async function ChapterPage({
               {user && !isPremiumLocked && (
                 <ChapterTracker
                   chapterSlug={slug}
+                  chapterTitle={chapter.title}
                   domainSlug={chapter.domain}
                   initialStatus={chapterProgress?.status ?? 'not_started'}
                 />

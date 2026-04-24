@@ -47,6 +47,7 @@ export default function OnboardingPage() {
         onboarding_level:  level,
         onboarding_done:   true,
       }).eq('id', user.id)
+      fetch('/api/auth/welcome', { method: 'POST' }).catch(() => {})
     }
     router.push('/dashboard')
     router.refresh()
