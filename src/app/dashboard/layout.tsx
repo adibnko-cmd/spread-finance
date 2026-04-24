@@ -25,12 +25,19 @@ export default async function DashboardLayout({
     redirect('/auth/onboarding')
   }
 
+  const { data: adminData } = await supabase
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', user.id)
+    .single()
+
   const userPlan = (profile?.plan ?? 'free') as Plan
+  const isAdmin  = (adminData as { is_admin?: boolean } | null)?.is_admin ?? false
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: '#F5F6F8' }}>
       {/* Sidebar fixe */}
-      <DashboardSidebar userPlan={userPlan} />
+      <DashboardSidebar userPlan={userPlan} isAdmin={isAdmin} />
 
       {/* Contenu scrollable */}
       <div className="flex-1 flex flex-col overflow-hidden">

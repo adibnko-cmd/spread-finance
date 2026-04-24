@@ -3,10 +3,19 @@
 // Gère les événements subscription (création, MAJ, annulation)
 // Route : /api/webhooks/stripe
 // ═══════════════════════════════════════════════════════════════════
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 import { headers } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
 import Stripe from 'stripe'
+import { sendSubscriptionChangedEmail } from '@/lib/email'
+
+// Service role — pas de RLS, accès complet pour les webhooks
+function createAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+}
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16',
@@ -18,25 +27,27 @@ function planFromPriceId(priceId: string): 'premium' | 'platinum' | 'free' {
   return 'free'
 }
 
+async function sendPlanEmail(supabase: ReturnType<typeof createAdminClient>, userId: string, plan: string) {
+  const { data: authUser } = await supabase.auth.admin.getUserById(userId)
+  if (!authUser.user?.email) return
+  const { data: prof } = await supabase.from('profiles').select('first_name').eq('id', userId).single()
+  sendSubscriptionChangedEmail(authUser.user.email, prof?.first_name ?? '', plan).catch(() => {})
+}
+
 export async function POST(request: NextRequest) {
-  const body      = await request.text()
+  const body        = await request.text()
   const headersList = await headers()
-  const signature = headersList.get('stripe-signature')!
+  const signature   = headersList.get('stripe-signature')!
 
   let event: Stripe.Event
-
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    )
+    event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET!)
   } catch (err) {
     console.error('Webhook signature verification failed:', err)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   switch (event.type) {
     // ── Abonnement créé / activé ───────────────────────────────
@@ -47,7 +58,6 @@ export async function POST(request: NextRequest) {
       const priceId      = subscription.items.data[0]?.price.id
       const plan         = planFromPriceId(priceId)
 
-      // Trouver l'utilisateur via stripe_customer_id
       const { data: profile } = await supabase
         .from('profiles')
         .select('id')
@@ -55,27 +65,27 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (profile) {
-        // Mettre à jour le profil
         await supabase.from('profiles').update({
           plan,
           plan_started_at: new Date(subscription.current_period_start * 1000).toISOString(),
           plan_ends_at:    new Date(subscription.current_period_end * 1000).toISOString(),
         }).eq('id', profile.id)
 
-        // Mettre à jour la table subscriptions
         await supabase.from('subscriptions').upsert({
-          user_id:                  profile.id,
-          stripe_subscription_id:   subscription.id,
-          stripe_customer_id:       customerId,
-          stripe_price_id:          priceId,
-          status:                   subscription.status as 'active' | 'past_due' | 'canceled' | 'trialing',
+          user_id:                profile.id,
+          stripe_subscription_id: subscription.id,
+          stripe_customer_id:     customerId,
+          stripe_price_id:        priceId,
+          status:                 subscription.status as 'active' | 'past_due' | 'canceled' | 'trialing',
           plan,
           current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
           current_period_end:   new Date(subscription.current_period_end * 1000).toISOString(),
-          cancel_at:    subscription.cancel_at
+          cancel_at: subscription.cancel_at
             ? new Date(subscription.cancel_at * 1000).toISOString()
             : null,
         }, { onConflict: 'user_id' })
+
+        await sendPlanEmail(supabase, profile.id, plan)
       }
       break
     }
@@ -92,32 +102,23 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (profile) {
-        await supabase.from('profiles').update({
-          plan: 'free',
-          plan_ends_at: null,
-        }).eq('id', profile.id)
-
+        await supabase.from('profiles').update({ plan: 'free', plan_ends_at: null }).eq('id', profile.id)
         await supabase.from('subscriptions').update({
-          status:      'canceled',
-          plan:        'free',
-          canceled_at: new Date().toISOString(),
+          status: 'canceled', plan: 'free', canceled_at: new Date().toISOString(),
         }).eq('stripe_subscription_id', subscription.id)
+
+        await sendPlanEmail(supabase, profile.id, 'free')
       }
       break
     }
 
-    // ── Paiement réussi ────────────────────────────────────────
-    case 'invoice.payment_succeeded': {
+    case 'invoice.payment_succeeded':
       console.log('Payment succeeded:', event.data.object)
       break
-    }
 
-    // ── Paiement échoué ────────────────────────────────────────
-    case 'invoice.payment_failed': {
+    case 'invoice.payment_failed':
       console.warn('Payment failed:', event.data.object)
-      // Envoyer un email de relance via Resend (Phase 4 Sprint 3)
       break
-    }
 
     default:
       console.log(`Unhandled event type: ${event.type}`)

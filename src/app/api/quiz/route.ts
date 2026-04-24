@@ -5,6 +5,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
+import { sendQuizPassedEmail } from '@/lib/email'
 
 const quizSubmitSchema = z.object({
   chapter_slug:    z.string().min(1),
@@ -30,13 +31,11 @@ export async function POST(request: NextRequest) {
 
   const { chapter_slug, domain_slug, quiz_level, total_questions, correct_answers, time_seconds } = parsed.data
 
-  // Vérifier accès quiz niveau 3 (Premium requis)
-  if (quiz_level === 3) {
-    const { data: profile } = await supabase
-      .from('profiles').select('plan').eq('id', user.id).single()
-    if (profile?.plan === 'free') {
-      return NextResponse.json({ error: 'Premium required', upgrade: true }, { status: 403 })
-    }
+  // Vérifier accès quiz niveau 3 (Premium requis) + charger le profil
+  const { data: profile } = await supabase
+    .from('profiles').select('plan, first_name').eq('id', user.id).single()
+  if (quiz_level === 3 && profile?.plan === 'free') {
+    return NextResponse.json({ error: 'Premium required', upgrade: true }, { status: 403 })
   }
 
   const score  = Math.round((correct_answers / total_questions) * 100)
@@ -92,6 +91,19 @@ export async function POST(request: NextRequest) {
     target_slug: chapter_slug,
     metadata:    { score, passed, quiz_level },
   })
+
+  // Email si quiz réussi (fire-and-forget, pas bloquant)
+  if (passed && user.email) {
+    const xpMap: Record<number, number> = { 1: 15, 2: 25, 3: 50 }
+    sendQuizPassedEmail(
+      user.email,
+      profile?.first_name ?? 'vous',
+      chapter_slug,
+      score,
+      quiz_level,
+      xpMap[quiz_level] ?? 0,
+    ).catch(() => {})
+  }
 
   return NextResponse.json({
     success: true,

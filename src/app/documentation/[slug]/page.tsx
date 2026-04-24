@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server'
 import { DOMAINS } from '@/types'
 import ChapterTracker from './ChapterTracker'
 import TableOfContents, { type Heading } from './TableOfContents'
+import { FlagButton } from '@/components/ui/FlagButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -76,6 +77,7 @@ function buildPtComponents(headingIds: Map<string, string>): PortableTextCompone
     ),
   },
   types: {
+    undefined: () => null,
     exampleTabs: ({ value }) => (
       <ExampleTabs tabs={value.tabs ?? []} />
     ),
@@ -304,29 +306,38 @@ export default async function ChapterPage({
 
             {/* En-tête du chapitre */}
             <div className="mb-8">
-              <div className="flex flex-wrap items-center gap-2 mb-4">
-                <span
-                  className="text-[10px] font-bold px-2.5 py-1 rounded-full"
-                  style={{ background: `${domainColor}12`, color: domainColor }}
-                >
-                  Partie {chapter.part} — {chapter.partTitle}
-                </span>
-                <span
-                  className="text-[10px] font-bold px-2.5 py-1 rounded-full"
-                  style={{
-                    background: chapter.accessLevel === 'free' ? '#E6FAF3' : '#EBF2FF',
-                    color:      chapter.accessLevel === 'free' ? '#0d7a56' : '#1a5fc8',
-                  }}
-                >
-                  {chapter.accessLevel === 'free' ? 'Free' : 'Premium'}
-                </span>
-                {chapter.difficulty && (
-                  <span className="text-[10px] text-gray-400 font-medium">
-                    {DIFFICULTY_LABELS[chapter.difficulty]}
+              <div className="flex items-center justify-between gap-2 mb-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className="text-[10px] font-bold px-2.5 py-1 rounded-full"
+                    style={{ background: `${domainColor}12`, color: domainColor }}
+                  >
+                    Partie {chapter.part} — {chapter.partTitle}
                   </span>
-                )}
-                {chapter.estimatedReadingTime && (
-                  <span className="text-[10px] text-gray-400">· {chapter.estimatedReadingTime} min de lecture</span>
+                  <span
+                    className="text-[10px] font-bold px-2.5 py-1 rounded-full"
+                    style={{
+                      background: chapter.accessLevel === 'free' ? '#E6FAF3' : '#EBF2FF',
+                      color:      chapter.accessLevel === 'free' ? '#0d7a56' : '#1a5fc8',
+                    }}
+                  >
+                    {chapter.accessLevel === 'free' ? 'Free' : 'Premium'}
+                  </span>
+                  {chapter.difficulty && (
+                    <span className="text-[10px] text-gray-400 font-medium">
+                      {DIFFICULTY_LABELS[chapter.difficulty]}
+                    </span>
+                  )}
+                  {chapter.estimatedReadingTime && (
+                    <span className="text-[10px] text-gray-400">· {chapter.estimatedReadingTime} min de lecture</span>
+                  )}
+                </div>
+                {user && (
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <FlagButton contentType="chapter" contentSlug={slug} domainSlug={chapter.domain} flagType="favorite" userPlan={userPlan} />
+                    <FlagButton contentType="chapter" contentSlug={slug} domainSlug={chapter.domain} flagType="to_review" userPlan={userPlan} />
+                    <FlagButton contentType="chapter" contentSlug={slug} domainSlug={chapter.domain} flagType="to_read" userPlan={userPlan} />
+                  </div>
                 )}
               </div>
 

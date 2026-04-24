@@ -4,6 +4,8 @@ import { PortableText, type PortableTextComponents } from '@portabletext/react'
 import { getArticleBySlug } from '@/lib/sanity/client'
 import ExampleTabs from '@/components/ui/ExampleTabs'
 import TableOfContents, { type Heading, type RelatedArticle } from '@/app/documentation/[slug]/TableOfContents'
+import { createClient } from '@/lib/supabase/server'
+import { FlagButton } from '@/components/ui/FlagButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,6 +57,7 @@ const ptComponents: PortableTextComponents = {
     ),
   },
   types: {
+    undefined: () => null,
     exampleTabs: ({ value }) => (
       <ExampleTabs tabs={value.tabs ?? []} />
     ),
@@ -80,7 +83,18 @@ const ptComponents: PortableTextComponents = {
 
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const article  = await getArticleBySlug(slug).catch(() => null)
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const isAuthenticated = !!user
+
+  let userPlan = 'free'
+  if (user) {
+    const { data: profile } = await supabase.from('profiles').select('plan').eq('id', user.id).single()
+    userPlan = profile?.plan ?? 'free'
+  }
+
+  const article = await getArticleBySlug(slug).catch(() => null)
   if (!article) notFound()
 
   const domain = DOMAIN_META[article.domain]
@@ -111,29 +125,46 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         <div className="flex items-center gap-4">
           <Link href="/articles" className="text-xs text-white/50 hover:text-white/90 transition-colors">← Articles</Link>
           <Link href="/documentation" className="text-xs text-white/50 hover:text-white/90 transition-colors">Documentation</Link>
-          <Link href="/dashboard" className="text-xs font-bold text-white px-4 py-1.5 rounded-lg" style={{ background: '#3183F7' }}>Dashboard</Link>
+          {isAuthenticated ? (
+            <Link href="/dashboard" className="text-xs font-bold text-white px-4 py-1.5 rounded-lg" style={{ background: '#3183F7' }}>
+              Dashboard
+            </Link>
+          ) : (
+            <Link href="/auth/login" className="text-xs font-bold text-white px-4 py-1.5 rounded-lg" style={{ background: '#3183F7' }}>
+              Connexion
+            </Link>
+          )}
         </div>
       </nav>
 
       <div className="flex justify-center">
       <article className="max-w-2xl w-full px-8 py-12 flex-1 min-w-0">
-        {/* Meta */}
-        <div className="flex items-center gap-2 mb-5">
-          {domain && (
-            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: `${domain.color}15`, color: domain.color }}>
-              {domain.name}
-            </span>
-          )}
-          {article.accessLevel === 'premium' && (
-            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: '#EBF2FF', color: '#1a5fc8' }}>Premium</span>
-          )}
-          {article.publishedAt && (
-            <span className="text-[10px] text-gray-400">
-              {new Date(article.publishedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </span>
-          )}
-          {article.estimatedReadingTime && (
-            <span className="text-[10px] text-gray-400">· {article.estimatedReadingTime} min de lecture</span>
+        {/* Meta + flags */}
+        <div className="flex items-center justify-between gap-2 mb-5">
+          <div className="flex items-center gap-2 flex-wrap">
+            {domain && (
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: `${domain.color}15`, color: domain.color }}>
+                {domain.name}
+              </span>
+            )}
+            {article.accessLevel === 'premium' && (
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: '#EBF2FF', color: '#1a5fc8' }}>Premium</span>
+            )}
+            {article.publishedAt && (
+              <span className="text-[10px] text-gray-400">
+                {new Date(article.publishedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </span>
+            )}
+            {article.estimatedReadingTime && (
+              <span className="text-[10px] text-gray-400">· {article.estimatedReadingTime} min de lecture</span>
+            )}
+          </div>
+          {isAuthenticated && (
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <FlagButton contentType="article" contentSlug={article.slug} domainSlug={article.domain} flagType="favorite" userPlan={userPlan} />
+              <FlagButton contentType="article" contentSlug={article.slug} domainSlug={article.domain} flagType="to_review" userPlan={userPlan} />
+              <FlagButton contentType="article" contentSlug={article.slug} domainSlug={article.domain} flagType="to_read" userPlan={userPlan} />
+            </div>
           )}
         </div>
 

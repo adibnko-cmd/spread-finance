@@ -3,8 +3,25 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ProgressBar } from '@/components/ui'
 import { getLevel } from '@/types'
+import { getChaptersByDomain } from '@/lib/sanity/client'
 
 export const dynamic = 'force-dynamic'
+
+const ACTION_LABELS: Record<string, string> = {
+  chapter_opened:    'Chapitre consulté',
+  chapter_read:      'Chapitre lu',
+  chapter_validated: 'Chapitre validé',
+  quiz_started:      'Quiz commencé',
+  quiz_completed:    'Quiz terminé',
+  quiz_passed:       'Quiz réussi',
+  flashcard_session: 'Session flashcards',
+  login:             'Connexion',
+  daily_streak:      'Streak journalier',
+}
+
+function slugToTitle(slug: string): string {
+  return slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -13,12 +30,13 @@ export default async function DashboardPage() {
   if (!user) redirect('/auth/login?redirectTo=/dashboard')
 
   // Récupérer toutes les données en parallèle
-  const [profileRes, progressRes, quizRes, xpRes, activityRes] = await Promise.all([
+  const [profileRes, progressRes, quizRes, xpRes, activityRes, sanityChapters] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
     supabase.from('chapter_progress').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
     supabase.from('quiz_results').select('*').eq('user_id', user.id).order('attempted_at', { ascending: false }).limit(5),
     supabase.from('xp_log').select('xp_earned').eq('user_id', user.id),
     supabase.from('activity_log').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(8),
+    getChaptersByDomain().catch(() => []),
   ])
 
   const profile  = profileRes.data
@@ -26,6 +44,10 @@ export default async function DashboardPage() {
   const quizzes  = quizRes.data ?? []
   const xpLogs   = xpRes.data ?? []
   const activity = activityRes.data ?? []
+
+  const chapterTitleMap = new Map(
+    ((sanityChapters ?? []) as Array<{ slug: string; title: string }>).map(c => [c.slug, c.title])
+  )
 
   const totalXp       = xpLogs.reduce((s, x) => s + x.xp_earned, 0)
   const { level, title: levelTitle, nextLevelXp, currentLevelXp } = getLevel(totalXp)
@@ -169,7 +191,7 @@ export default async function DashboardPage() {
                 >
                   <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: domainColors[p.domain_slug] ?? '#888' }} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-gray-800 truncate">{p.chapter_slug}</div>
+                    <div className="text-xs font-semibold text-gray-800 truncate">{chapterTitleMap.get(p.chapter_slug) ?? slugToTitle(p.chapter_slug)}</div>
                     <div className="text-[10px] text-gray-400 mt-0.5">{domainNames[p.domain_slug]}</div>
                   </div>
                   <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#3183F7' }}>
@@ -243,7 +265,7 @@ export default async function DashboardPage() {
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-gray-800 truncate">{q.chapter_slug} — Quiz N{q.quiz_level}</div>
+                    <div className="text-xs font-semibold text-gray-800 truncate">{chapterTitleMap.get(q.chapter_slug) ?? slugToTitle(q.chapter_slug)} — Quiz N{q.quiz_level}</div>
                     <div className="text-[10px] text-gray-400">{domainNames[q.domain_slug]} · {new Date(q.attempted_at).toLocaleDateString('fr-FR')}</div>
                   </div>
                   <span className="text-sm font-black flex-shrink-0" style={{ color }}>{q.score}%</span>
@@ -264,7 +286,7 @@ export default async function DashboardPage() {
             {activity.slice(0, 6).map(a => (
               <div key={a.id} className="flex items-center gap-2 py-2" style={{ borderBottom: '1px solid #f5f5f5' }}>
                 <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#3183F7' }} />
-                <span className="text-[11px] text-gray-600 flex-1 truncate">{a.target_title ?? a.action_type}</span>
+                <span className="text-[11px] text-gray-600 flex-1 truncate">{a.target_title ?? ACTION_LABELS[a.action_type] ?? slugToTitle(a.action_type)}</span>
                 <span className="text-[10px] text-gray-400 flex-shrink-0">{new Date(a.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}</span>
               </div>
             ))}

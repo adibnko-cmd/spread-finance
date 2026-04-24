@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { getChaptersByDomain, getArticles } from '@/lib/sanity/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,7 +40,7 @@ export default async function HistoryPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login?redirectTo=/dashboard')
 
-  const [activityRes, xpRes] = await Promise.all([
+  const [activityRes, xpRes, sanityChapters, sanityArticles] = await Promise.all([
     supabase
       .from('activity_log')
       .select('*')
@@ -52,10 +53,17 @@ export default async function HistoryPage() {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(50),
+    getChaptersByDomain().catch(() => []),
+    getArticles().catch(() => []),
   ])
 
   const activity = activityRes.data ?? []
   const totalXp  = (xpRes.data ?? []).reduce((s, x) => s + x.xp_earned, 0)
+
+  const contentTitleMap = new Map<string, string>([
+    ...((sanityChapters ?? []) as Array<{ slug: string; title: string }>).map(c => [c.slug, c.title] as [string, string]),
+    ...((sanityArticles  ?? []) as Array<{ slug: string; title: string }>).map(a => [a.slug, a.title] as [string, string]),
+  ])
 
   const groups = groupByDate(activity)
 
@@ -132,11 +140,10 @@ export default async function HistoryPage() {
                               <span className="text-gray-200">·</span>
                             </>
                           )}
-                          {a.target_title && (
-                            <span className="text-[10px] text-gray-400 truncate max-w-xs">{a.target_title}</span>
-                          )}
-                          {!a.target_title && a.target_slug && (
-                            <span className="text-[10px] text-gray-400 truncate max-w-xs">{a.target_slug}</span>
+                          {(a.target_title || a.target_slug) && (
+                            <span className="text-[10px] text-gray-400 truncate max-w-xs">
+                              {a.target_title ?? contentTitleMap.get(a.target_slug) ?? a.target_slug}
+                            </span>
                           )}
                         </div>
                       </div>

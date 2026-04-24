@@ -4,13 +4,18 @@
 // ═══════════════════════════════════════════════════════════════════
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
   title: 'Spread Finance — IT & Finance de marché',
   description: 'La référence francophone pour les professionnels IT & Finance de marché.',
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const isAuthenticated = !!user
+
   return (
     <main className="min-h-screen">
       {/* ── NAVBAR ── */}
@@ -19,7 +24,6 @@ export default function HomePage() {
         className="h-14 flex items-center justify-between px-8"
       >
         <div className="flex items-center gap-3">
-          {/* Logo — remplacer par <Logo /> */}
           <div
             style={{ background: '#3183F7', borderRadius: 8, width: 34, height: 34 }}
             className="flex items-center justify-center text-white text-xs font-black"
@@ -40,19 +44,31 @@ export default function HomePage() {
           <Link href="/articles" className="text-white/50 hover:text-white text-xs font-semibold px-3 py-1">
             Articles
           </Link>
-          <Link
-            href="/auth/login"
-            className="text-white/60 border border-white/20 rounded-md text-xs font-semibold px-3 py-1.5 hover:text-white"
-          >
-            Connexion
-          </Link>
-          <Link
-            href="/auth/register"
-            className="text-white text-xs font-bold px-4 py-1.5 rounded-md"
-            style={{ background: '#3183F7' }}
-          >
-            Commencer gratuitement
-          </Link>
+          {isAuthenticated ? (
+            <Link
+              href="/dashboard"
+              className="text-white text-xs font-bold px-4 py-1.5 rounded-md"
+              style={{ background: '#3183F7' }}
+            >
+              Mon dashboard →
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/auth/login"
+                className="text-white/60 border border-white/20 rounded-md text-xs font-semibold px-3 py-1.5 hover:text-white"
+              >
+                Connexion
+              </Link>
+              <Link
+                href="/auth/register"
+                className="text-white text-xs font-bold px-4 py-1.5 rounded-md"
+                style={{ background: '#3183F7' }}
+              >
+                Commencer gratuitement
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 

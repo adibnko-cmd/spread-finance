@@ -2,7 +2,7 @@
 // SPREAD FINANCE — Client Sanity + Requêtes GROQ
 // ═══════════════════════════════════════════════════════════════════
 import { createClient } from 'next-sanity'
-import imageUrlBuilder from '@sanity/image-url'
+import { createImageUrlBuilder } from '@sanity/image-url'
 
 // ── Client ────────────────────────────────────────────────────────
 export const sanityClient = createClient({
@@ -14,7 +14,7 @@ export const sanityClient = createClient({
 })
 
 // ── Image builder ─────────────────────────────────────────────────
-const builder = imageUrlBuilder(sanityClient)
+const builder = createImageUrlBuilder(sanityClient)
 export const urlFor = (source: any) => builder.image(source)
 
 // ── Requêtes GROQ ─────────────────────────────────────────────────

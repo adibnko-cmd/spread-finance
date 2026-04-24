@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { getChaptersByDomain } from '@/lib/sanity/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,13 +18,15 @@ export default async function QuizHistoryPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login?redirectTo=/dashboard')
 
-  const { data: quizzes } = await supabase
-    .from('quiz_results')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('attempted_at', { ascending: false })
+  const [{ data: quizzes }, sanityChapters] = await Promise.all([
+    supabase.from('quiz_results').select('*').eq('user_id', user.id).order('attempted_at', { ascending: false }),
+    getChaptersByDomain().catch(() => []),
+  ])
 
   const results = quizzes ?? []
+  const chapterTitleMap = new Map(
+    ((sanityChapters ?? []) as Array<{ slug: string; title: string }>).map(c => [c.slug, c.title])
+  )
   const total   = results.length
   const passed  = results.filter(q => q.passed).length
   const avgScore = total > 0
@@ -96,7 +99,7 @@ export default async function QuizHistoryPage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-semibold text-gray-800 truncate">
-                      {q.chapter_slug} — Niveau {q.quiz_level}
+                      {chapterTitleMap.get(q.chapter_slug) ?? q.chapter_slug} — Niveau {q.quiz_level}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <div className="w-1.5 h-1.5 rounded-full" style={{ background: domain?.color ?? '#888' }} />

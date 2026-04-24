@@ -141,7 +141,7 @@ export default function TableOfContents({ headings, quizSlug, flashcardsSlug, re
                 </svg>
               </div>
               <div>
-                <div className="text-[11px] font-bold text-white leading-tight">Réviser les flashcards</div>
+                <div className="text-[11px] font-bold text-white leading-tight">Flashcards</div>
                 <div className="text-[9px] text-white/40 mt-0.5">Mémorisez les concepts clés</div>
               </div>
             </Link>

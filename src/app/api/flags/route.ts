@@ -22,24 +22,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
   }
 
-  // Vérifier plan Premium pour les flags avancés
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('plan')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile || profile.plan === 'free') {
-    return NextResponse.json(
-      { error: 'Fonctionnalité réservée aux membres Premium' },
-      { status: 403 }
-    )
-  }
-
   const body = await request.json()
   const parsed = flagSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+  }
+
+  // Favoris gratuits pour tous — à_réviser et à_lire réservés Premium
+  const premiumOnlyFlags = ['to_review', 'to_read']
+  if (premiumOnlyFlags.includes(parsed.data.flag_type)) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('plan')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.plan === 'free') {
+      return NextResponse.json(
+        { error: 'Fonctionnalité réservée aux membres Premium' },
+        { status: 403 }
+      )
+    }
   }
 
   // Toggle : si le flag existe déjà, on le supprime

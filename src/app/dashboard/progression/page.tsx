@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { getLevel } from '@/types'
+import { getChaptersByDomain } from '@/lib/sanity/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,13 +25,17 @@ export default async function ProgressionPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login?redirectTo=/dashboard')
 
-  const [progressRes, xpRes] = await Promise.all([
+  const [progressRes, xpRes, sanityChapters] = await Promise.all([
     supabase.from('chapter_progress').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
     supabase.from('xp_log').select('xp_earned, created_at, source_type').eq('user_id', user.id).order('created_at', { ascending: false }),
+    getChaptersByDomain().catch(() => []),
   ])
 
   const progress = progressRes.data ?? []
   const xpLogs   = xpRes.data ?? []
+  const chapterTitleMap = new Map(
+    ((sanityChapters ?? []) as Array<{ slug: string; title: string }>).map(c => [c.slug, c.title])
+  )
   const totalXp  = xpLogs.reduce((s, x) => s + x.xp_earned, 0)
   const { level, title: levelTitle, nextLevelXp, currentLevelXp } = getLevel(totalXp)
   const xpPct = Math.min(100, Math.round(((totalXp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100))
@@ -131,7 +136,7 @@ export default async function ProgressionPage() {
                 >
                   <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: domain?.color ?? '#888' }} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-gray-800 truncate">{p.chapter_slug}</div>
+                    <div className="text-xs font-semibold text-gray-800 truncate">{chapterTitleMap.get(p.chapter_slug) ?? p.chapter_slug}</div>
                     <div className="text-[10px] text-gray-400 mt-0.5">
                       {domain?.name} · {new Date(p.updated_at).toLocaleDateString('fr-FR')}
                     </div>
