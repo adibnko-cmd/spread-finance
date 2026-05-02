@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { getChaptersByDomain, getArticles } from '@/lib/sanity/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,6 +9,7 @@ const FLAG_LABELS: Record<string, { label: string; emoji: string; color: string;
   favorite:  { label: 'Favoris',   emoji: '❤️',  color: '#F56751', bg: '#FFF5F3' },
   to_review: { label: 'À réviser', emoji: '🔖',  color: '#FFC13D', bg: '#FFFBEB' },
   to_read:   { label: 'À lire',    emoji: '📄',  color: '#3183F7', bg: '#EBF2FF' },
+  validated: { label: 'Acquis',    emoji: '✅',  color: '#36D399', bg: '#E6FAF3' },
 }
 
 const DOMAIN_COLORS: Record<string, string> = {
@@ -22,14 +24,19 @@ export default async function SavedPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login?redirectTo=/dashboard/saved')
 
-  const { data: profile } = await supabase.from('profiles').select('plan').eq('id', user.id).single()
-  const isPremium = profile?.plan === 'premium' || profile?.plan === 'platinum'
+  const [{ data: profile }, { data: flags }, sanityChapters, sanityArticles] = await Promise.all([
+    supabase.from('profiles').select('plan').eq('id', user.id).single(),
+    supabase.from('content_flags').select('*').eq('user_id', user.id).order('flagged_at', { ascending: false }),
+    getChaptersByDomain().catch(() => []),
+    getArticles().catch(() => []),
+  ])
 
-  const { data: flags } = await supabase
-    .from('content_flags')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('flagged_at', { ascending: false })
+  const contentTitleMap = new Map<string, string>([
+    ...((sanityChapters ?? []) as Array<{ slug: string; title: string }>).map(c => [c.slug, c.title] as [string, string]),
+    ...((sanityArticles  ?? []) as Array<{ slug: string; title: string }>).map(a => [a.slug, a.title] as [string, string]),
+  ])
+
+  const isPremium = profile?.plan === 'premium' || profile?.plan === 'platinum'
 
   const grouped: Record<string, typeof flags> = {}
   for (const flag of flags ?? []) {
@@ -69,7 +76,7 @@ export default async function SavedPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-6">
-          {(['favorite', 'to_review', 'to_read'] as const).map(flagType => {
+          {(['validated', 'favorite', 'to_review', 'to_read'] as const).map(flagType => {
             const items = grouped[flagType] ?? []
             if (items.length === 0) return null
             const cfg = FLAG_LABELS[flagType]
@@ -105,7 +112,9 @@ export default async function SavedPage() {
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-semibold text-gray-800 truncate">{flag.content_slug}</div>
+                        <div className="text-xs font-semibold text-gray-800 truncate">
+                          {contentTitleMap.get(flag.content_slug) ?? flag.content_slug}
+                        </div>
                         <div className="flex items-center gap-2 mt-0.5">
                           {flag.domain_slug && (
                             <span

@@ -1,3 +1,22 @@
+export const ACHIEVEMENT_CASH: Record<string, number> = {
+  xp_100:          1,
+  xp_500:          3,
+  xp_1000:         5,
+  xp_5000:         15,
+  first_chapter:   1,
+  first_validated: 2,
+  chapters_5:      5,
+  chapters_10:     10,
+  all_domains:     15,
+  first_quiz:      1,
+  quiz_5:          5,
+  perfect_score:   3,
+  level3_quiz:     5,
+  streak_3:        2,
+  streak_7:        5,
+  streak_30:       15,
+}
+
 export interface Achievement {
   id:          string
   icon:        string

@@ -16,6 +16,7 @@ export default async function AdminPage() {
     { count: totalUsers },
     { count: premiumUsers },
     { count: platinumUsers },
+    { count: enterpriseUsers },
     { data: recentUsers },
     { data: xpData },
     { data: quizData },
@@ -25,6 +26,7 @@ export default async function AdminPage() {
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('plan', 'premium'),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('plan', 'platinum'),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('plan', 'enterprise'),
     supabase.from('profiles').select('id, first_name, last_name, plan, created_at').order('created_at', { ascending: false }).limit(10),
     supabase.from('xp_log').select('xp_earned'),
     supabase.from('quiz_results').select('passed, score'),
@@ -36,7 +38,7 @@ export default async function AdminPage() {
   const totalQuizzes    = quizData?.length ?? 0
   const passedQuizzes   = (quizData ?? []).filter(q => q.passed).length
   const avgScore        = totalQuizzes > 0 ? Math.round((quizData ?? []).reduce((s, q) => s + q.score, 0) / totalQuizzes) : 0
-  const freeUsers       = (totalUsers ?? 0) - (premiumUsers ?? 0) - (platinumUsers ?? 0)
+  const freeUsers       = (totalUsers ?? 0) - (premiumUsers ?? 0) - (platinumUsers ?? 0) - (enterpriseUsers ?? 0)
   const activeThisWeek  = activityData?.length ?? 0
 
   const flagsByType: Record<string, number> = {}
@@ -44,7 +46,7 @@ export default async function AdminPage() {
     flagsByType[f.flag_type] = (flagsByType[f.flag_type] ?? 0) + 1
   }
 
-  const PLAN_COLORS = { free: '#9CA3AF', premium: '#3183F7', platinum: '#A855F7' }
+  const PLAN_COLORS = { free: '#9CA3AF', premium: '#3183F7', platinum: '#A855F7', enterprise: '#36D399' }
 
   return (
     <div>
@@ -54,11 +56,12 @@ export default async function AdminPage() {
       </div>
 
       {/* KPIs principaux */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-5 gap-4 mb-6">
         {[
           { label: 'Utilisateurs total',   value: totalUsers ?? 0,        color: '#1C1C2E' },
           { label: 'Membres Premium',      value: premiumUsers ?? 0,      color: '#3183F7' },
           { label: 'Membres Platinum',     value: platinumUsers ?? 0,     color: '#A855F7' },
+          { label: 'Comptes Entreprise',   value: enterpriseUsers ?? 0,   color: '#36D399' },
           { label: 'Actifs cette semaine', value: activeThisWeek,         color: '#36D399' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-white rounded-xl p-4" style={{ border: '1.5px solid #E8E8E8' }}>
@@ -73,9 +76,10 @@ export default async function AdminPage() {
         <div className="bg-white rounded-xl p-4" style={{ border: '1.5px solid #E8E8E8' }}>
           <div className="text-xs font-bold text-gray-700 mb-3">Répartition des plans</div>
           {[
-            { label: 'Free',     value: freeUsers,          plan: 'free'     },
-            { label: 'Premium',  value: premiumUsers ?? 0,  plan: 'premium'  },
-            { label: 'Platinum', value: platinumUsers ?? 0, plan: 'platinum' },
+            { label: 'Freemium',   value: freeUsers,              plan: 'free'       },
+            { label: 'Premium',    value: premiumUsers ?? 0,      plan: 'premium'    },
+            { label: 'Platinum',   value: platinumUsers ?? 0,     plan: 'platinum'   },
+            { label: 'Entreprise', value: enterpriseUsers ?? 0,   plan: 'enterprise' },
           ].map(({ label, value, plan }) => {
             const pct = totalUsers ? Math.round((value / totalUsers) * 100) : 0
             return (

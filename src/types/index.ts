@@ -4,8 +4,9 @@
 // ═══════════════════════════════════════════════════════════════════
 
 // ── PLANS ──────────────────────────────────────────────────────────
-export type Plan = 'free' | 'premium' | 'platinum'
+export type Plan = 'free' | 'premium' | 'platinum' | 'enterprise'
 export type Language = 'fr' | 'en' | 'es' | 'de' | 'pt'
+export type AccountType = 'individual' | 'enterprise'
 
 // ── DOMAINES (alignés sur l'architecture documentation) ────────────
 export type DomainSlug = 'finance' | 'maths' | 'dev' | 'pm' | 'ml'
@@ -37,9 +38,11 @@ export interface Profile {
   onboarding_level: 'beginner' | 'intermediate' | 'advanced' | null
   onboarding_done: boolean
   plan: Plan
+  account_type: AccountType
   plan_started_at: string | null
   plan_ends_at: string | null
   stripe_customer_id: string | null
+  is_admin: boolean
   created_at: string
   updated_at: string
 }
@@ -196,8 +199,18 @@ export const PLAN_FEATURES = {
     canAccessQuizLevel3: true,
     canCreateFlashcards: true,
     canAccessJobs: true,
-    canAccessElearning: true, // Prochainement (post-prod)
-    canAccessCertifications: true, // Prochainement (post-prod)
+    canAccessElearning: true,
+    canAccessCertifications: true,
+    canDownloadPdf: true,
+    maxDomainsInProgress: null,
+  },
+  enterprise: {
+    canAccessPremiumChapters: true,
+    canAccessQuizLevel3: true,
+    canCreateFlashcards: true,
+    canAccessJobs: true,
+    canAccessElearning: true,
+    canAccessCertifications: true,
     canDownloadPdf: true,
     maxDomainsInProgress: null,
   },

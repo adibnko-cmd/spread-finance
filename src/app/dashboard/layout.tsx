@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar'
+import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar'
 import type { Plan } from '@/types'
 
 export default async function DashboardLayout({
@@ -15,32 +16,28 @@ export default async function DashboardLayout({
     redirect('/auth/login?redirectTo=/dashboard')
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('plan, first_name, onboarding_done')
-    .eq('id', user.id)
-    .single()
+  const [{ data: profile, error: profileError }, { data: cashLog }] = await Promise.all([
+    supabase.from('profiles').select('plan, first_name, onboarding_done, is_admin, account_type').eq('id', user.id).single(),
+    supabase.from('cash_log').select('cash_earned').eq('user_id', user.id),
+  ])
+
 
   if (profile && !profile.onboarding_done) {
     redirect('/auth/onboarding')
   }
 
-  const { data: adminData } = await supabase
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
-
-  const userPlan = (profile?.plan ?? 'free') as Plan
-  const isAdmin  = (adminData as { is_admin?: boolean } | null)?.is_admin ?? false
+  const userPlan  = (profile?.plan ?? 'free') as Plan
+  const isAdmin   = profile?.is_admin ?? false
+  const totalCash = (cashLog ?? []).reduce((sum, r) => sum + r.cash_earned, 0)
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: '#F5F6F8' }}>
       {/* Sidebar fixe */}
       <DashboardSidebar userPlan={userPlan} isAdmin={isAdmin} />
 
-      {/* Contenu scrollable */}
+      {/* Contenu : top bar + scrollable */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        <DashboardTopBar totalCash={totalCash} />
         <main className="flex-1 overflow-y-auto">
           {children}
         </main>

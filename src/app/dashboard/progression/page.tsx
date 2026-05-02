@@ -27,7 +27,7 @@ export default async function ProgressionPage() {
 
   const [progressRes, xpRes, sanityChapters] = await Promise.all([
     supabase.from('chapter_progress').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
-    supabase.from('xp_log').select('xp_earned, created_at, source_type').eq('user_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('xp_log').select('xp_earned, earned_at, source_type').eq('user_id', user.id).order('earned_at', { ascending: false }),
     getChaptersByDomain().catch(() => []),
   ])
 
@@ -51,7 +51,9 @@ export default async function ProgressionPage() {
     }
   })
 
-  const recentProgress = progress.filter(p => p.status !== 'not_started').slice(0, 10)
+  const recentProgress = progress
+    .filter(p => p.status !== 'not_started' && chapterTitleMap.has(p.chapter_slug))
+    .slice(0, 10)
 
   return (
     <div className="p-5">

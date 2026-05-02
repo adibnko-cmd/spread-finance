@@ -59,13 +59,23 @@ export async function POST(request: NextRequest) {
     const streakLength = await computeStreak(supabase, userId, yesterday)
     const bonusXp = Math.min(20 + (streakLength - 1) * 5, 40) // 20 XP base, +5/jour, max 40
 
-    const { error } = await supabase.from('xp_log').insert({
-      user_id:     userId,
-      source_type: 'daily_streak',
-      source_id:   today,
-      xp_earned:   bonusXp,
-      earned_at:   new Date().toISOString(),
-    })
+    const bonusCash = Math.min(2 + (streakLength - 1), 5) // 2€ base, +1€/jour, max 5€
+
+    const [{ error }] = await Promise.all([
+      supabase.from('xp_log').insert({
+        user_id:     userId,
+        source_type: 'daily_streak',
+        source_id:   today,
+        xp_earned:   bonusXp,
+        earned_at:   new Date().toISOString(),
+      }),
+      supabase.from('cash_log').insert({
+        user_id:     userId,
+        source_type: 'daily_streak',
+        source_id:   today,
+        cash_earned: bonusCash,
+      }),
+    ])
 
     if (error) {
       errors.push(`${userId}: ${error.message}`)
@@ -79,7 +89,7 @@ export async function POST(request: NextRequest) {
       target_type:  'chapter',
       target_slug:  'daily_streak',
       target_title: `Bonus streak — +${bonusXp} XP`,
-      metadata:     { xp: bonusXp, streak_days: streakLength },
+      metadata:     { xp: bonusXp, cash: bonusCash, streak_days: streakLength },
     })
 
     awarded++

@@ -447,5 +447,59 @@ export const evaluationSchema = {
   }],
 }
 
+// ── QUIZ COMPÉTITION HEBDOMADAIRE ────────────────────────────────
+export const weeklyQuizSchema = {
+  name: 'weeklyQuiz',
+  title: 'Quiz compétition (hebdo)',
+  type: 'document',
+  fields: [
+    {
+      name: 'weekId',
+      title: 'ID de la semaine (format YYYY-WNN, ex: 2026-W18)',
+      type: 'string',
+      validation: (r: any) => r.required(),
+    },
+    {
+      name: 'questions',
+      title: 'Questions (10 recommandées)',
+      type: 'array',
+      of: [{
+        type: 'object',
+        name: 'question',
+        fields: [
+          { name: 'text',        title: 'Question', type: 'string', validation: (r: any) => r.required() },
+          { name: 'explanation', title: 'Explication (affichée après réponse)', type: 'text' },
+          {
+            name: 'answers',
+            title: 'Réponses',
+            type: 'array',
+            of: [{
+              type: 'object',
+              fields: [
+                { name: 'text',      title: 'Texte',            type: 'string' },
+                { name: 'isCorrect', title: 'Bonne réponse ?',  type: 'boolean' },
+              ],
+            }],
+            validation: (r: any) => r.min(2).max(5),
+          },
+        ],
+        preview: { select: { title: 'text' } },
+      }],
+      validation: (r: any) => r.min(1),
+    },
+  ],
+  preview: {
+    select: { weekId: 'weekId' },
+    prepare: ({ weekId }: any) => ({
+      title: `Compétition — ${weekId ?? 'Sans semaine'}`,
+    }),
+  },
+  orderings: [{
+    title: 'Par semaine (décroissant)',
+    name: 'weekDesc',
+    by: [{ field: 'weekId', direction: 'desc' }],
+  }],
+}
+
 // Export du schéma complet pour sanity.config.ts
-export const schemaTypes = [chapterSchema, articleSchema, quizSchema, evaluationSchema]
+export const schemaTypes = [chapterSchema, articleSchema, quizSchema, evaluationSchema, weeklyQuizSchema]

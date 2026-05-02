@@ -6,6 +6,8 @@ import ExampleTabs from '@/components/ui/ExampleTabs'
 import TableOfContents, { type Heading, type RelatedArticle } from '@/app/documentation/[slug]/TableOfContents'
 import { createClient } from '@/lib/supabase/server'
 import { FlagButton } from '@/components/ui/FlagButton'
+import { LikeButton } from '@/components/ui/LikeButton'
+import ChapterTracker from '@/app/documentation/[slug]/ChapterTracker'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +27,14 @@ const DOMAIN_META: Record<string, { name: string; color: string }> = {
 
 function slugify(text: string): string {
   return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-')
+}
+
+function computeReadingTime(content: Array<{ _type: string; children?: Array<{ text?: string }> }>): number {
+  const words = content.reduce((acc, block) => {
+    if (block._type !== 'block') return acc
+    return acc + (block.children ?? []).reduce((sum, c) => sum + (c.text ?? '').split(/\s+/).filter(Boolean).length, 0)
+  }, 0)
+  return Math.max(1, Math.ceil(words / 200))
 }
 
 const ptComponents: PortableTextComponents = {
@@ -89,15 +99,29 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const isAuthenticated = !!user
 
   let userPlan = 'free'
+  let articleProgress: { status: string } | null = null
+  let isAcquis = false
+
   if (user) {
-    const { data: profile } = await supabase.from('profiles').select('plan').eq('id', user.id).single()
-    userPlan = profile?.plan ?? 'free'
+    const [profileRes, progressRes, quizRes] = await Promise.all([
+      supabase.from('profiles').select('plan').eq('id', user.id).single(),
+      supabase.from('chapter_progress').select('status').eq('user_id', user.id).eq('chapter_slug', slug).maybeSingle(),
+      supabase.from('quiz_results').select('quiz_level').eq('user_id', user.id).eq('chapter_slug', slug).eq('passed', true),
+    ])
+    userPlan = profileRes.data?.plan ?? 'free'
+    articleProgress = progressRes.data
+    const passedLevels = new Set((quizRes.data ?? []).map(r => r.quiz_level))
+    isAcquis = passedLevels.has(1) && passedLevels.has(2) && passedLevels.has(3)
   }
 
   const article = await getArticleBySlug(slug).catch(() => null)
   if (!article) notFound()
 
   const domain = DOMAIN_META[article.domain]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const readingTime = article.estimatedReadingTime ?? computeReadingTime((article.content ?? []) as any)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://spread-finance.fr'
+  const linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`${appUrl}/articles/${slug}`)}`
 
   const seenIds = new Map<string, number>()
   const headings: Heading[] = (article.content ?? [])
@@ -122,6 +146,21 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             <div style={{ fontFamily: 'Permanent Marker, cursive', color: '#3183F7', fontSize: 9 }}>Finance</div>
           </div>
         </Link>
+        {/* Barre de recherche */}
+        <form action="/documentation" method="GET" className="flex-1 max-w-xs mx-6">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.12)' }}>
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="flex-shrink-0">
+              <circle cx="5" cy="5" r="3.5" stroke="rgba(255,255,255,.4)" strokeWidth="1.3"/>
+              <path d="M8 8l2 2" stroke="rgba(255,255,255,.4)" strokeWidth="1.3" strokeLinecap="round"/>
+            </svg>
+            <input
+              type="search"
+              name="q"
+              placeholder="Rechercher dans la doc..."
+              className="flex-1 bg-transparent text-[11px] text-white outline-none placeholder:text-white/30 min-w-0"
+            />
+          </div>
+        </form>
         <div className="flex items-center gap-4">
           <Link href="/articles" className="text-xs text-white/50 hover:text-white/90 transition-colors">← Articles</Link>
           <Link href="/documentation" className="text-xs text-white/50 hover:text-white/90 transition-colors">Documentation</Link>
@@ -155,20 +194,55 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                 {new Date(article.publishedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
               </span>
             )}
-            {article.estimatedReadingTime && (
-              <span className="text-[10px] text-gray-400">· {article.estimatedReadingTime} min de lecture</span>
+            <span className="text-[10px] text-gray-400">· {readingTime} min de lecture</span>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <LikeButton contentType="article" contentSlug={article.slug} isAuthenticated={isAuthenticated} />
+            {isAuthenticated && (
+              <>
+                <FlagButton contentType="article" contentSlug={article.slug} domainSlug={article.domain} flagType="favorite" userPlan={userPlan} />
+                <FlagButton contentType="article" contentSlug={article.slug} domainSlug={article.domain} flagType="to_review" userPlan={userPlan} />
+                <FlagButton contentType="article" contentSlug={article.slug} domainSlug={article.domain} flagType="to_read" userPlan={userPlan} />
+                <div
+                  title={isAcquis ? 'Article acquis — quiz niveaux 1, 2 et 3 réussis ✓' : 'Acquis quand les 3 niveaux de quiz sont réussis'}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
+                  style={{
+                    border: `1.5px solid ${isAcquis ? '#36D399' : '#E8E8E8'}`,
+                    background: isAcquis ? '#E6FAF3' : '#fff',
+                    color: isAcquis ? '#0d7a56' : '#9CA3AF',
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+                    <circle cx="8" cy="8" r="6"/>
+                    <path d="M5 8l2 2 4-4" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="text-[10px] font-semibold hidden sm:inline">Acquis</span>
+                </div>
+              </>
             )}
           </div>
-          {isAuthenticated && (
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <FlagButton contentType="article" contentSlug={article.slug} domainSlug={article.domain} flagType="favorite" userPlan={userPlan} />
-              <FlagButton contentType="article" contentSlug={article.slug} domainSlug={article.domain} flagType="to_review" userPlan={userPlan} />
-              <FlagButton contentType="article" contentSlug={article.slug} domainSlug={article.domain} flagType="to_read" userPlan={userPlan} />
-            </div>
-          )}
         </div>
 
-        <h1 className="text-3xl font-black text-gray-900 mb-4 leading-tight">{article.title}</h1>
+        <h1 className="text-3xl font-black text-gray-900 mb-3 leading-tight">{article.title}</h1>
+
+        {/* Auteur */}
+        {article.author?.name && (
+          <div className="flex items-center gap-2 mb-6">
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
+              style={{ background: domain?.color ?? '#3183F7' }}
+            >
+              {article.author.name[0].toUpperCase()}
+            </div>
+            <span className="text-xs font-semibold text-gray-600">{article.author.name}</span>
+            {article.publishedAt && (
+              <span className="text-xs text-gray-400">
+                · {new Date(article.publishedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </span>
+            )}
+            <span className="text-xs text-gray-400">· {readingTime} min</span>
+          </div>
+        )}
 
         {article.excerpt && (
           <p className="text-base text-gray-500 leading-relaxed mb-8 pb-8" style={{ borderBottom: '1.5px solid #EBEBEB' }}>
@@ -183,9 +257,21 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           <p className="text-gray-400 text-sm">Contenu à venir.</p>
         )}
 
+        {/* Bouton Lu */}
+        {isAuthenticated && (
+          <div className="mt-10 flex justify-center">
+            <ChapterTracker
+              chapterSlug={slug}
+              chapterTitle={article.title}
+              domainSlug={article.domain}
+              initialStatus={articleProgress?.status ?? 'not_started'}
+            />
+          </div>
+        )}
+
         {/* Quiz CTA */}
         <div
-          className="mt-10 p-5 rounded-2xl flex items-center justify-between"
+          className="mt-8 p-5 rounded-2xl flex items-center justify-between"
           style={{ background: '#1C1C2E' }}
         >
           <div>
@@ -200,6 +286,26 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             Commencer le quiz →
           </Link>
         </div>
+
+        {/* Flashcards CTA */}
+        {FLASHCARD_SLUGS.has(article.slug) && (
+          <div
+            className="mt-3 p-5 rounded-2xl flex items-center justify-between"
+            style={{ background: '#1C1C2E' }}
+          >
+            <div>
+              <div className="text-sm font-bold text-white mb-0.5">Flashcards disponibles</div>
+              <div className="text-xs text-white/40">Révisez les notions clés en cartes</div>
+            </div>
+            <Link
+              href={`/flashcards/${article.slug}`}
+              className="text-xs font-bold px-4 py-2.5 rounded-xl transition-opacity hover:opacity-90"
+              style={{ background: '#A855F7', color: '#fff' }}
+            >
+              Réviser en flashcards →
+            </Link>
+          </div>
+        )}
 
         {/* Chapitres liés */}
         {article.relatedChapters && article.relatedChapters.length > 0 && (
@@ -223,6 +329,37 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             </div>
           </div>
         )}
+        {/* ── Lien Glossaire ── */}
+        <div className="mt-10 flex items-center gap-2 text-xs text-gray-400">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <rect x="1.5" y="1.5" width="10" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+            <path d="M4 4.5h5M4 6.5h5M4 8.5h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+          </svg>
+          <span>Un terme vous échappe ?</span>
+          <Link href="/glossaire" className="font-semibold hover:underline" style={{ color: '#3183F7' }}>
+            Consulter le glossaire →
+          </Link>
+        </div>
+
+        {/* ── Partager sur LinkedIn ── */}
+        <div className="mt-6 pt-6" style={{ borderTop: '1.5px solid #EBEBEB' }}>
+          <a
+            href={linkedInShareUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-opacity hover:opacity-80"
+            style={{ border: '1.5px solid #C7DCF5', color: '#0A66C2', background: '#EEF5FF' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <rect width="16" height="16" rx="3" fill="#0A66C2"/>
+              <circle cx="4.5" cy="4.5" r="1" fill="white"/>
+              <path d="M4 7v5" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M8 12V9.5C8 8.1 9.1 7 10.5 7S13 8.1 13 9.5V12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M8 7v5" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            Partager cet article sur LinkedIn
+          </a>
+        </div>
       </article>
       <TableOfContents
         headings={headings}

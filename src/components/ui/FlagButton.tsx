@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils/cn'
 
-type FlagType = 'favorite' | 'to_review' | 'to_read'
+type FlagType = 'favorite' | 'to_review' | 'to_read' | 'validated'
 type ContentType = 'chapter' | 'article' | 'quiz' | 'flashcard'
 
 interface FlagButtonProps {
@@ -49,6 +49,18 @@ const FLAG_CONFIG = {
     activeColor: '#3183F7',
     activeBg: '#EBF2FF',
     freePlan: false,
+  },
+  validated: {
+    icon: (active: boolean) => (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={active ? '#36D399' : 'currentColor'} strokeWidth="1.4">
+        <circle cx="8" cy="8" r="6" />
+        <path d="M5 8l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" stroke={active ? '#36D399' : 'currentColor'} />
+      </svg>
+    ),
+    label: 'Acquis',
+    activeColor: '#36D399',
+    activeBg: '#E6FAF3',
+    freePlan: true,
   },
 }
 

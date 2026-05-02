@@ -66,21 +66,7 @@ export default function ChapterTracker({ chapterSlug, chapterTitle, domainSlug, 
     setStatus('completed')
   }
 
-  if (status === 'validated') {
-    return (
-      <div
-        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold"
-        style={{ background: '#E6FAF3', color: '#0d7a56' }}
-      >
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path d="M2 6l3 3 5-5" stroke="#0d7a56" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        Validé
-      </div>
-    )
-  }
-
-  if (status === 'completed') {
+  if (status === 'completed' || status === 'validated') {
     return (
       <div
         className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold"

@@ -258,7 +258,7 @@ export default function SettingsClient({ email, firstName, lastName, plan, membe
 
       {/* Danger zone */}
       <div className="bg-white rounded-2xl p-6" style={{ border: '1.5px solid #FECACA' }}>
-        <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#c0392b' }}>Zone de danger</div>
+        <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#c0392b' }}>Déconnexion</div>
         <div className="flex items-center justify-between">
           <div>
             <div className="text-sm font-semibold text-gray-800">Se déconnecter</div>

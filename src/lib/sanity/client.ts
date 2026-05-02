@@ -75,7 +75,8 @@ export const ARTICLES_QUERY = `
     "slug": slug.current,
     domain, accessLevel, publishedAt,
     estimatedReadingTime, excerpt,
-    "coverImageUrl": coverImage.asset->url
+    "coverImageUrl": coverImage.asset->url,
+    "author": author->{ name }
   }
 `
 
@@ -87,6 +88,7 @@ export const ARTICLE_BY_SLUG_QUERY = `
     domain, accessLevel, publishedAt,
     estimatedReadingTime, content,
     "coverImageUrl": coverImage.asset->url,
+    "author": author->{ name, "imageUrl": image.asset->url },
     "relatedChapters": relatedChapters[]-> {
       _id, title, "slug": slug.current, domain
     }
@@ -118,6 +120,22 @@ export async function getArticles() {
 
 export async function getArticleBySlug(slug: string) {
   return sanityClient.fetch(ARTICLE_BY_SLUG_QUERY, { slug })
+}
+
+// Toutes les questions de quiz (pour training/speed/knockout)
+export const ALL_QUIZ_QUESTIONS_QUERY = `
+  *[_type == "quiz" && count(questions) > 0]{
+    _id, level, chapterSlug,
+    "domain": *[_type == "chapter" && slug.current == ^.chapterSlug][0].domain,
+    questions[]{
+      _key, text, explanation,
+      answers[]{ text, isCorrect }
+    }
+  }
+`
+
+export async function getAllQuizQuestions() {
+  return sanityClient.fetch(ALL_QUIZ_QUESTIONS_QUERY)
 }
 
 // ── ÉVALUATIONS ───────────────────────────────────────────────────
@@ -152,4 +170,19 @@ export async function getEvaluation(domain: string, part: number, level: number)
 
 export async function getEvaluationsByDomain(domain: string) {
   return sanityClient.fetch(EVALUATIONS_BY_DOMAIN_QUERY, { domain })
+}
+
+// Quiz compétition hebdomadaire
+export const WEEKLY_QUIZ_QUERY = `
+  *[_type == "weeklyQuiz" && weekId == $weekId][0] {
+    weekId,
+    questions[] {
+      _key, text, explanation,
+      answers[] { text, isCorrect }
+    }
+  }
+`
+
+export async function getWeeklyQuiz(weekId: string) {
+  return sanityClient.fetch(WEEKLY_QUIZ_QUERY, { weekId })
 }

@@ -37,13 +37,20 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
+        <div className="flex items-center gap-1 text-[11px]">
+          {([
+            ['/documentation', 'Documentation'],
+            ['/articles', 'Articles'],
+            ['/elearning', 'E-Learning'],
+            ['/entreprise', 'Entreprise'],
+            ['/books', 'Livres'],
+            ['/pricing', 'Pricing'],
+            ['/about', 'À propos'],
+          ] as [string, string][]).map(([href, label]) => (
+            <Link key={href} href={href} className="text-white/50 hover:text-white font-semibold px-2.5 py-1">{label}</Link>
+          ))}
+        </div>
         <div className="flex items-center gap-2">
-          <Link href="/documentation" className="text-white/50 hover:text-white text-xs font-semibold px-3 py-1">
-            Documentation
-          </Link>
-          <Link href="/articles" className="text-white/50 hover:text-white text-xs font-semibold px-3 py-1">
-            Articles
-          </Link>
           {isAuthenticated ? (
             <Link
               href="/dashboard"
@@ -304,14 +311,21 @@ export default async function HomePage() {
       {/* ── FOOTER ── */}
       <footer style={{ background: '#292929' }} className="px-8 py-8">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div className="text-white/30 text-xs">
-            © 2026 Spread Finance. Tous droits réservés.
+          <div className="text-white/30 text-xs leading-relaxed">
+            © 2026 Spread Finance.<br />Tous droits réservés.
           </div>
-          <div className="flex gap-4">
-            {['Documentation', 'À propos', 'Contact', 'CGU'].map(l => (
-              <a key={l} href="#" className="text-white/30 hover:text-white/60 text-xs">
-                {l}
-              </a>
+          <div className="flex flex-nowrap gap-3">
+            {([
+              ['/documentation', 'Documentation'],
+              ['/articles', 'Articles'],
+              ['/elearning', 'E-Learning'],
+              ['/entreprise', 'Entreprise'],
+              ['/books', 'Livres'],
+              ['/pricing', 'Pricing'],
+              ['/glossaire', 'Glossaire'],
+              ['/about', 'À propos'],
+            ] as [string, string][]).map(([href, l]) => (
+              <Link key={href} href={href} className="text-white/30 hover:text-white/60 text-[11px] whitespace-nowrap transition-colors">{l}</Link>
             ))}
           </div>
         </div>

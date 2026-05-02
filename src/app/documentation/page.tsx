@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { getChaptersByDomain } from '@/lib/sanity/client'
+import { createClient } from '@/lib/supabase/server'
 import type { SanityChapter } from '@/types'
 import SearchTrigger from '@/components/ui/SearchTrigger'
 
-export const revalidate = 3600 // Revalidation ISR toutes les heures
+export const dynamic = 'force-dynamic'
 
 const DOMAIN_META = {
   finance: { name: 'Finance de marché',        color: '#3183F7', chapters: 8 },
@@ -23,12 +24,28 @@ export default async function DocumentationPage({
   const { domain } = await searchParams
   const activeDomain = (domain ?? 'finance') as DomainSlug
 
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
   let chapters: SanityChapter[] = []
   try {
     chapters = await getChaptersByDomain()
   } catch {
     // CMS non configuré — afficher une page squelette
     chapters = []
+  }
+
+  // Progression par domaine
+  let progressByDomain: Record<string, number> = {}
+  if (user) {
+    const { data: progressData } = await supabase
+      .from('chapter_progress')
+      .select('domain_slug')
+      .eq('user_id', user.id)
+      .in('status', ['completed', 'validated'])
+    for (const row of progressData ?? []) {
+      progressByDomain[row.domain_slug] = (progressByDomain[row.domain_slug] ?? 0) + 1
+    }
   }
 
   // Grouper par domaine → partie → chapitres
@@ -60,23 +77,42 @@ export default async function DocumentationPage({
           </div>
         </Link>
         <SearchTrigger />
-        <Link href="/dashboard" className="text-xs font-bold text-white px-4 py-1.5 rounded-lg" style={{ background: '#3183F7' }}>
-          Mon dashboard
-        </Link>
+        <div className="flex items-center gap-5">
+          <Link href="/articles" className="text-xs text-white/50 hover:text-white/90 transition-colors">
+            Articles
+          </Link>
+          {user ? (
+            <Link href="/dashboard" className="text-xs font-bold text-white px-4 py-1.5 rounded-lg" style={{ background: '#3183F7' }}>
+              Mon dashboard
+            </Link>
+          ) : (
+            <>
+              <Link href="/auth/login" className="text-xs font-bold text-white px-4 py-1.5 rounded-lg transition-colors" style={{ border: '1.5px solid rgba(255,255,255,.3)' }}>
+                Connexion
+              </Link>
+              <Link href="/auth/register" className="text-xs font-bold text-white px-4 py-1.5 rounded-lg" style={{ background: '#3183F7' }}>
+                Commencer gratuitement
+              </Link>
+            </>
+          )}
+        </div>
       </nav>
 
       {/* Layout 3 colonnes */}
       <div className="flex flex-1 overflow-hidden" style={{ minHeight: 'calc(100vh - 56px)' }}>
         {/* SIDEBAR GAUCHE */}
         <aside className="w-56 flex-shrink-0 overflow-y-auto" style={{ background: '#F9FAFB', borderRight: '1px solid #EBEBEB' }}>
-          {/* Recherche filtrer */}
+          {/* Raccourcis */}
           <div className="p-3 pb-0">
-            <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg" style={{ background: '#fff', border: '1.5px solid #E8E8E8' }}>
-              <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                <circle cx="5" cy="5" r="4" stroke="#bbb" strokeWidth="1.2"/>
-                <path d="M8 8l2 2" stroke="#bbb" strokeWidth="1.2" strokeLinecap="round"/>
-              </svg>
-              <span className="text-[10px] text-gray-300">Filtrer...</span>
+            <div className="flex items-center gap-1 mb-2">
+              <Link href="/" className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-700 px-2 py-1 rounded-md hover:bg-gray-100 transition-colors">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M1 6l5-4 5 4v5a.8.8 0 01-.8.8H1.8A.8.8 0 011 11V6z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>
+                Home
+              </Link>
+              <Link href="/articles" className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-700 px-2 py-1 rounded-md hover:bg-gray-100 transition-colors">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M2 6h8M2 9h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                Articles
+              </Link>
             </div>
           </div>
 
@@ -239,17 +275,22 @@ export default async function DocumentationPage({
         {/* SIDEBAR DROITE — progression */}
         <aside className="w-44 flex-shrink-0 p-4 overflow-y-auto" style={{ borderLeft: '1px solid #EBEBEB', background: '#FAFAFA' }}>
           <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3">Progression</div>
-          {(Object.entries(DOMAIN_META) as [DomainSlug, typeof DOMAIN_META.finance][]).map(([slug, meta]) => (
-            <div key={slug} className="mb-3">
-              <div className="flex justify-between mb-1">
-                <span className="text-[10px] font-semibold text-gray-600">{meta.name.split(' ')[0]}</span>
-                <span className="text-[10px] font-bold" style={{ color: meta.color }}>0%</span>
+          {(Object.entries(DOMAIN_META) as [DomainSlug, typeof DOMAIN_META.finance][]).map(([slug, meta]) => {
+            const total = (byDomain[slug] ?? []).length || meta.chapters
+            const done  = progressByDomain[slug] ?? 0
+            const pct   = total > 0 ? Math.round((done / total) * 100) : 0
+            return (
+              <div key={slug} className="mb-3">
+                <div className="flex justify-between mb-1">
+                  <span className="text-[10px] font-semibold text-gray-600">{meta.name.split(' de')[0].split(' fi')[0]}</span>
+                  <span className="text-[10px] font-bold" style={{ color: pct > 0 ? meta.color : '#9CA3AF' }}>{pct}%</span>
+                </div>
+                <div className="h-1 rounded-full bg-gray-200 overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: meta.color }} />
+                </div>
               </div>
-              <div className="h-1 rounded-full bg-gray-200 overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: '0%', background: meta.color }} />
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </aside>
       </div>
     </div>

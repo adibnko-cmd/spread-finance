@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { sendQuizPassedEmail } from '@/lib/email'
+import { syncAchievements } from '@/lib/achievements-sync'
 
 const quizSubmitSchema = z.object({
   chapter_slug:    z.string().min(1),
@@ -61,7 +62,8 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Si quiz réussi → valider le chapitre + XP
+  // Si quiz réussi → valider le chapitre + XP + Cash
+  const cashMap: Record<number, number> = { 1: 5, 2: 10, 3: 25 }
   if (passed) {
     await supabase
       .from('chapter_progress')
@@ -74,14 +76,22 @@ export async function POST(request: NextRequest) {
         updated_at:    new Date().toISOString(),
       }, { onConflict: 'user_id,chapter_slug' })
 
-    // XP selon niveau du quiz
+    // XP + Cash selon niveau du quiz
     const xpMap: Record<number, number> = { 1: 15, 2: 25, 3: 50 }
-    await supabase.from('xp_log').insert({
-      user_id:     user.id,
-      source_type: `quiz_level${quiz_level}` as 'quiz_level1' | 'quiz_level2' | 'quiz_level3',
-      source_id:   chapter_slug,
-      xp_earned:   xpMap[quiz_level],
-    })
+    await Promise.all([
+      supabase.from('xp_log').insert({
+        user_id:     user.id,
+        source_type: `quiz_level${quiz_level}` as 'quiz_level1' | 'quiz_level2' | 'quiz_level3',
+        source_id:   chapter_slug,
+        xp_earned:   xpMap[quiz_level],
+      }),
+      supabase.from('cash_log').insert({
+        user_id:     user.id,
+        source_type: 'quiz_passed',
+        source_id:   chapter_slug,
+        cash_earned: cashMap[quiz_level],
+      }),
+    ])
   }
 
   // Log activité
@@ -107,11 +117,17 @@ export async function POST(request: NextRequest) {
     ).catch(() => {})
   }
 
+  // Vérifier les nouveaux achievements (fire-and-forget)
+  if (passed) {
+    syncAchievements(supabase as Parameters<typeof syncAchievements>[0], user.id).catch(() => {})
+  }
+
   return NextResponse.json({
     success: true,
     score,
     passed,
-    xp_earned: passed ? [15, 25, 50][quiz_level - 1] : 0,
+    xp_earned:   passed ? [15, 25, 50][quiz_level - 1] : 0,
+    cash_earned: passed ? cashMap[quiz_level] : 0,
     data: result,
   })
 }

@@ -30,20 +30,24 @@ export default async function DashboardPage() {
   if (!user) redirect('/auth/login?redirectTo=/dashboard')
 
   // Récupérer toutes les données en parallèle
-  const [profileRes, progressRes, quizRes, xpRes, activityRes, sanityChapters] = await Promise.all([
+  const [profileRes, progressRes, quizRes, xpRes, cashRes, activityRes, sanityChapters, evalRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
     supabase.from('chapter_progress').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
     supabase.from('quiz_results').select('*').eq('user_id', user.id).order('attempted_at', { ascending: false }).limit(5),
     supabase.from('xp_log').select('xp_earned').eq('user_id', user.id),
+    supabase.from('cash_log').select('cash_earned').eq('user_id', user.id),
     supabase.from('activity_log').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(8),
     getChaptersByDomain().catch(() => []),
+    supabase.from('evaluation_results').select('*').eq('user_id', user.id).order('attempted_at', { ascending: false }).limit(4),
   ])
 
-  const profile  = profileRes.data
-  const progress = progressRes.data ?? []
-  const quizzes  = quizRes.data ?? []
-  const xpLogs   = xpRes.data ?? []
-  const activity = activityRes.data ?? []
+  const profile     = profileRes.data
+  const progress    = progressRes.data ?? []
+  const quizzes     = quizRes.data ?? []
+  const xpLogs      = xpRes.data ?? []
+  const totalCash   = (cashRes.data ?? []).reduce((s, r) => s + r.cash_earned, 0)
+  const activity    = activityRes.data ?? []
+  const evaluations = evalRes.data ?? []
 
   const chapterTitleMap = new Map(
     ((sanityChapters ?? []) as Array<{ slug: string; title: string }>).map(c => [c.slug, c.title])
@@ -145,7 +149,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* XP BAR */}
+      {/* XP + CASH BAR */}
       <div className="rounded-xl p-4 mb-4 flex items-center gap-4" style={{ background: '#1C1C2E' }}>
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
           <path d="M9 2l2 5h5l-4 3 1.5 5L9 12.5 4.5 15 6 10 2 7h5z" fill="#FFC13D"/>
@@ -155,6 +159,10 @@ export default async function DashboardPage() {
           <div className="h-full rounded-full" style={{ width: `${Math.min(100, xpProgress)}%`, background: '#3183F7' }} />
         </div>
         <span className="text-xs text-white/40 whitespace-nowrap">{totalXp.toLocaleString()} / {nextLevelXp.toLocaleString()} XP</span>
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: 'rgba(255,193,61,.12)', border: '1px solid rgba(255,193,61,.2)' }}>
+          <span className="text-sm leading-none">💰</span>
+          <span className="text-xs font-black" style={{ color: '#FFC13D' }}>{totalCash.toLocaleString()}</span>
+        </div>
       </div>
 
       {/* STATS STRIP */}
@@ -277,6 +285,41 @@ export default async function DashboardPage() {
           <p className="text-xs text-gray-400 py-4 text-center">Aucun quiz passé pour l'instant</p>
         )}
       </div>
+
+      {/* ÉVALUATIONS QCM */}
+      {evaluations.length > 0 && (
+        <div className="bg-white rounded-xl p-4 mb-4" style={{ border: '1.5px solid #E8E8E8' }}>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-gray-800">Évaluations QCM</span>
+            <Link href="/dashboard/roadmap" className="text-xs font-semibold" style={{ color: '#3183F7' }}>Road Map →</Link>
+          </div>
+          <div className="flex flex-col">
+            {evaluations.map(e => {
+              const color = e.passed ? '#36D399' : e.score >= 50 ? '#FFC13D' : '#F56751'
+              const levelLabel = ['', 'Facile', 'Moyen', 'Difficile'][e.difficulty_level as 1|2|3] ?? ''
+              return (
+                <div key={e.id} className="flex items-center gap-3 py-2.5" style={{ borderBottom: '1px solid #f5f5f5' }}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${color}20` }}>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      {e.passed
+                        ? <path d="M2 6l3 3 5-5" stroke={color} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                        : <path d="M3 3l6 6M9 3l-6 6" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+                      }
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-semibold text-gray-800 truncate">
+                      {e.part_title ?? `Partie ${e.part}`} — {levelLabel}
+                    </div>
+                    <div className="text-[10px] text-gray-400">{domainNames[e.domain_slug]} · {new Date(e.attempted_at).toLocaleDateString('fr-FR')}</div>
+                  </div>
+                  <span className="text-sm font-black flex-shrink-0" style={{ color }}>{e.score}%</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ACTIVITÉ RÉCENTE */}
       {activity.length > 0 && (

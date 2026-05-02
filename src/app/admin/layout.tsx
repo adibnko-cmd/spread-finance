@@ -1,17 +1,11 @@
-import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
-import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { AdminNav } from './AdminNav'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll: () => cookieStore.getAll() } }
-  )
+  const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login?redirectTo=/admin')
@@ -44,23 +38,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* Nav + content */}
       <div className="flex">
         <aside className="w-48 min-h-screen p-4" style={{ background: '#fff', borderRight: '1.5px solid #E8E8E8' }}>
-          <nav className="flex flex-col gap-1">
-            {[
-              { href: '/admin', label: 'Vue d\'ensemble' },
-              { href: '/admin/users', label: 'Utilisateurs' },
-              { href: '/admin/subscriptions', label: 'Abonnements' },
-              { href: '/admin/content', label: 'Contenu' },
-              { href: '/admin/jobs', label: 'Offres d\'emploi' },
-            ].map(({ href, label }) => (
-              <a
-                key={href}
-                href={href}
-                className="text-xs font-semibold px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700 transition-colors"
-              >
-                {label}
-              </a>
-            ))}
-          </nav>
+          <AdminNav />
         </aside>
         <main className="flex-1 p-6">{children}</main>
       </div>

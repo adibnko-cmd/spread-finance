@@ -27,7 +27,8 @@ const STATIC_JOBS: Job[] = [
     location: 'Paris, France', type: 'cdi', domain_slug: 'finance',
     salary_min: 65000, salary_max: 95000,
     description: 'Rejoignez notre équipe de recherche quantitative pour développer et implémenter des modèles de pricing sur produits dérivés taux et crédit.',
-    tags: ['Python', 'C++', 'Options', 'Monte Carlo', 'Risk'], apply_url: '#',
+    tags: ['Python', 'C++', 'Options', 'Monte Carlo', 'Risk'],
+    apply_url: 'https://group.bnpparibas/emploi-carriere',
     posted_at: new Date(Date.now() - 2 * 86400000).toISOString(),
   },
   {
@@ -35,7 +36,8 @@ const STATIC_JOBS: Job[] = [
     location: 'Paris, France', type: 'cdi', domain_slug: 'dev',
     salary_min: 55000, salary_max: 80000,
     description: 'Développement et maintenance de systèmes de trading algorithmique basse latence. Collaboration étroite avec les desks Fixed Income et Equity.',
-    tags: ['Python', 'FastAPI', 'Redis', 'Kafka', 'Low Latency'], apply_url: '#',
+    tags: ['Python', 'FastAPI', 'Redis', 'Kafka', 'Low Latency'],
+    apply_url: 'https://careers.societegenerale.com',
     posted_at: new Date(Date.now() - 5 * 86400000).toISOString(),
   },
   {
@@ -43,7 +45,8 @@ const STATIC_JOBS: Job[] = [
     location: 'Paris, France', type: 'cdi', domain_slug: 'finance',
     salary_min: 70000, salary_max: 100000,
     description: 'Pilotage du risque de marché sur fonds actions et obligataires. Suivi des métriques VaR, CVaR et stress tests réglementaires.',
-    tags: ['VaR', 'CVaR', 'Bloomberg', 'Excel VBA', 'FRTB'], apply_url: '#',
+    tags: ['VaR', 'CVaR', 'Bloomberg', 'Excel VBA', 'FRTB'],
+    apply_url: 'https://careers.amundi.com',
     posted_at: new Date(Date.now() - 7 * 86400000).toISOString(),
   },
   {
@@ -51,7 +54,8 @@ const STATIC_JOBS: Job[] = [
     location: 'Paris, France', type: 'cdi', domain_slug: 'ml',
     salary_min: 60000, salary_max: 90000,
     description: 'Application du machine learning à la gestion d\'actifs : prédiction de rendements, optimisation de portefeuilles, détection d\'anomalies.',
-    tags: ['Python', 'scikit-learn', 'PyTorch', 'Pandas', 'Finance'],apply_url: '#',
+    tags: ['Python', 'scikit-learn', 'PyTorch', 'Pandas', 'Finance'],
+    apply_url: 'https://careers.axa-im.com',
     posted_at: new Date(Date.now() - 10 * 86400000).toISOString(),
   },
   {
@@ -59,7 +63,8 @@ const STATIC_JOBS: Job[] = [
     location: 'Paris, France', type: 'stage', domain_slug: 'finance',
     salary_min: 1200, salary_max: 1800,
     description: 'Stage de 6 mois au sein de l\'équipe structuration. Participation au pricing et à la documentation de produits dérivés sur sous-jacents actions.',
-    tags: ['Excel', 'VBA', 'Options', 'Structuration', 'Dérivés'], apply_url: '#',
+    tags: ['Excel', 'VBA', 'Options', 'Structuration', 'Dérivés'],
+    apply_url: 'https://www.natixis.com/natixis/jcms/hecprod_544274/fr/carrieres',
     posted_at: new Date(Date.now() - 3 * 86400000).toISOString(),
   },
   {
@@ -67,7 +72,8 @@ const STATIC_JOBS: Job[] = [
     location: 'Montrouge, France', type: 'cdi', domain_slug: 'pm',
     salary_min: 55000, salary_max: 75000,
     description: 'Pilotage de projets de transformation digitale pour les systèmes bancaires cœur. Coordination des équipes SI, métier et fournisseurs.',
-    tags: ['Agile', 'JIRA', 'Bancaire', 'AMOA', 'Gestion de projet'], apply_url: '#',
+    tags: ['Agile', 'JIRA', 'Bancaire', 'AMOA', 'Gestion de projet'],
+    apply_url: 'https://www.credit-agricole.com/recrutement',
     posted_at: new Date(Date.now() - 14 * 86400000).toISOString(),
   },
   {
@@ -75,7 +81,8 @@ const STATIC_JOBS: Job[] = [
     location: 'Paris, France', type: 'alternance', domain_slug: 'dev',
     salary_min: 1400, salary_max: 1800,
     description: 'Rejoignez notre squad produit pour développer de nouvelles fonctionnalités sur notre application mobile de paiement et de gestion financière.',
-    tags: ['React Native', 'Node.js', 'TypeScript', 'PostgreSQL', 'FinTech'], apply_url: '#',
+    tags: ['React Native', 'Node.js', 'TypeScript', 'PostgreSQL', 'FinTech'],
+    apply_url: 'https://jobs.lever.co/lydia',
     posted_at: new Date(Date.now() - 1 * 86400000).toISOString(),
   },
   {
@@ -83,7 +90,8 @@ const STATIC_JOBS: Job[] = [
     location: 'Remote / Paris', type: 'freelance', domain_slug: 'maths',
     salary_min: 600, salary_max: 900,
     description: 'Mission de 3 mois pour un cabinet conseil en assurance. Développement de modèles actuariels pour l\'évaluation des réserves techniques Solvabilité II.',
-    tags: ['R', 'Python', 'Actuariat', 'Solvabilité II', 'IFRS 17'], apply_url: '#',
+    tags: ['R', 'Python', 'Actuariat', 'Solvabilité II', 'IFRS 17'],
+    apply_url: 'mailto:contact@spread-finance.fr',
     posted_at: new Date(Date.now() - 6 * 86400000).toISOString(),
   },
 ]
@@ -266,13 +274,15 @@ export default async function JobsPage() {
                   )}
                   <span className="text-[10px] text-gray-400">{daysAgo(job.posted_at)}</span>
                 </div>
-                <Link
+                <a
                   href={job.apply_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-[11px] font-bold px-3 py-1.5 rounded-lg text-white"
                   style={{ background: '#1C1C2E' }}
                 >
                   Postuler →
-                </Link>
+                </a>
               </div>
             </div>
           )

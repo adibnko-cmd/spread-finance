@@ -5,6 +5,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
+import { syncAchievements } from '@/lib/achievements-sync'
 
 const progressSchema = z.object({
   chapter_slug:       z.string().min(1),
@@ -95,6 +96,9 @@ export async function POST(request: NextRequest) {
     target_slug:  chapter_slug,
     target_title: chapter_title ?? null,
   })
+
+  // Vérifier les nouveaux achievements (fire-and-forget)
+  syncAchievements(supabase as Parameters<typeof syncAchievements>[0], user.id).catch(() => {})
 
   return NextResponse.json({ data })
 }
