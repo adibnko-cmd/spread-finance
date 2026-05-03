@@ -3,12 +3,20 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { getAllQuizQuestions } from '@/lib/sanity/client'
 import { z } from 'zod'
 
+const questionSchema = z.object({
+  text:        z.string(),
+  explanation: z.string(),
+  domain:      z.string(),
+  answers:     z.array(z.object({ text: z.string(), isCorrect: z.boolean() })),
+})
+
 const schema = z.object({
-  title:          z.string().min(3).max(200),
-  description:    z.string().max(1000).optional(),
-  domains:        z.array(z.enum(['finance','maths','dev','pm','ml'])).min(1),
-  question_count: z.number().int().min(3).max(30),
-  time_limit:     z.number().int().min(1).max(120).nullable().optional(),
+  title:              z.string().min(3).max(200),
+  description:        z.string().max(1000).optional(),
+  domains:            z.array(z.enum(['finance','maths','dev','pm','ml'])).min(1),
+  question_count:     z.number().int().min(3).max(30),
+  time_limit:         z.number().int().min(1).max(120).nullable().optional(),
+  manual_questions:   z.array(questionSchema).min(3).max(30).optional(),
 })
 
 // Questions de secours multi-domaines
@@ -132,36 +140,40 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(await req.json())
   if (!parsed.success) return NextResponse.json({ error: 'Données invalides' }, { status: 400 })
 
-  const { title, description, domains, question_count, time_limit } = parsed.data
+  const { title, description, domains, question_count, time_limit, manual_questions } = parsed.data
 
-  // Collecter les questions
-  let pool: Array<{ text: string; explanation: string; domain: string; answers: { text: string; isCorrect: boolean }[] }> = []
+  let selected: Array<{ text: string; explanation: string; domain: string; answers: { text: string; isCorrect: boolean }[] }> = []
 
-  try {
-    const sanityData = await getAllQuizQuestions()
-    if (sanityData?.length) {
-      for (const quiz of sanityData) {
-        if (!quiz.domain || !domains.includes(quiz.domain)) continue
-        for (const q of quiz.questions ?? []) {
-          pool.push({ text: q.text, explanation: q.explanation ?? '', domain: quiz.domain, answers: q.answers })
+  if (manual_questions && manual_questions.length >= 3) {
+    selected = manual_questions
+  } else {
+    // Collecter les questions automatiquement
+    let pool: typeof selected = []
+
+    try {
+      const sanityData = await getAllQuizQuestions()
+      if (sanityData?.length) {
+        for (const quiz of sanityData) {
+          if (!quiz.domain || !domains.includes(quiz.domain)) continue
+          for (const q of quiz.questions ?? []) {
+            pool.push({ text: q.text, explanation: q.explanation ?? '', domain: quiz.domain, answers: q.answers })
+          }
+        }
+      }
+    } catch { /* Sanity non disponible */ }
+
+    for (const domain of domains) {
+      const fb = FALLBACK[domain] ?? []
+      for (const q of fb) {
+        if (pool.length < question_count * 3) {
+          pool.push({ ...q, domain })
         }
       }
     }
-  } catch { /* Sanity non disponible */ }
 
-  // Compléter avec le fallback si nécessaire
-  for (const domain of domains) {
-    const fb = FALLBACK[domain] ?? []
-    for (const q of fb) {
-      if (pool.length < question_count * 3) {
-        pool.push({ ...q, domain })
-      }
-    }
+    pool = shuffle(pool.filter(q => (domains as string[]).includes(q.domain)))
+    selected = pool.slice(0, question_count)
   }
-
-  // Filtrer par domaines et mélanger
-  pool = shuffle(pool.filter(q => (domains as string[]).includes(q.domain)))
-  const selected = pool.slice(0, question_count)
 
   if (selected.length === 0) {
     return NextResponse.json({ error: 'Aucune question disponible pour les domaines sélectionnés' }, { status: 400 })

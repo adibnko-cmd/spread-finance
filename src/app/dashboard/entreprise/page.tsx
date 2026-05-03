@@ -7,17 +7,18 @@ export default async function EnterpriseDashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: ep } = user
-    ? await supabase.from('enterprise_profiles').select('company_name, seats, sector, contact_email').eq('id', user!.id).maybeSingle()
-    : { data: null }
+  const [epRes, jobsRes, membersRes] = user ? await Promise.all([
+    supabase.from('enterprise_profiles').select('company_name, seats, sector, contact_email').eq('id', user!.id).maybeSingle(),
+    supabase.from('jobs').select('id, title, is_active, posted_at').eq('posted_by', user!.id).order('posted_at', { ascending: false }).limit(5),
+    supabase.from('enterprise_members').select('*', { count: 'exact', head: true }).eq('enterprise_id', user!.id),
+  ]) : [{ data: null }, { data: null }, { count: 0 }]
 
-  // Offres déposées par cette entreprise
-  const { data: jobs } = user
-    ? await supabase.from('jobs').select('id, title, is_active, posted_at').eq('posted_by', user!.id).order('posted_at', { ascending: false }).limit(5)
-    : { data: null }
+  const ep  = epRes.data
+  const jobs = jobsRes.data
 
   const activeJobs   = (jobs ?? []).filter(j => j.is_active).length
   const pendingJobs  = (jobs ?? []).filter(j => !j.is_active).length
+  const memberCount  = membersRes.count ?? 0
 
   return (
     <div className="p-8">
@@ -34,11 +35,16 @@ export default async function EnterpriseDashboardPage() {
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="bg-white rounded-2xl p-5" style={{ border: '1.5px solid #E8E8E8' }}>
+          <div className="text-[11px] text-gray-400 mb-1">Collaborateurs actifs</div>
+          <div className="text-3xl font-black text-gray-900">{memberCount}</div>
+          <div className="text-[10px] text-gray-400 mt-1">sur {ep?.seats ?? '—'} sièges</div>
+        </div>
         <div className="bg-white rounded-2xl p-5" style={{ border: '1.5px solid #E8E8E8' }}>
           <div className="text-[11px] text-gray-400 mb-1">Sièges disponibles</div>
-          <div className="text-3xl font-black text-gray-900">{ep?.seats ?? '—'}</div>
-          <div className="text-[10px] text-gray-400 mt-1">licences actives</div>
+          <div className="text-3xl font-black text-gray-900">{ep?.seats != null ? ep.seats - memberCount : '—'}</div>
+          <div className="text-[10px] text-gray-400 mt-1">licences libres</div>
         </div>
         <div className="bg-white rounded-2xl p-5" style={{ border: '1.5px solid #E8E8E8' }}>
           <div className="text-[11px] text-gray-400 mb-1">Offres actives</div>

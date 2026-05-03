@@ -42,6 +42,15 @@ function fmtDate(d: string | null) {
   return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function deadlineStatus(deadline: string | null): { label: string; color: string; bg: string } | null {
+  if (!deadline) return null
+  const days = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000)
+  if (days < 0)  return { label: `Dépassé de ${Math.abs(days)}j`, color: '#dc2626', bg: '#FEF2F0' }
+  if (days === 0) return { label: "Échéance aujourd'hui", color: '#F56751', bg: '#FEF2F0' }
+  if (days <= 7)  return { label: `${days}j restant${days > 1 ? 's' : ''}`, color: '#b37700', bg: '#FFF8E6' }
+  return { label: `${days}j restant${days > 1 ? 's' : ''}`, color: '#0d7a56', bg: '#E6FAF3' }
+}
+
 export function FormationClient({ members: initial }: Props) {
   const [members, setMembers] = useState<Member[]>(initial)
   const [editing, setEditing]   = useState<Member | null>(null)
@@ -135,8 +144,31 @@ export function FormationClient({ members: initial }: Props) {
     URL.revokeObjectURL(url)
   }
 
+  // Compute deadline alerts
+  const overdueMembers  = members.filter(m => m.assignment?.deadline && deadlineStatus(m.assignment.deadline)?.color === '#dc2626')
+  const urgentMembers   = members.filter(m => m.assignment?.deadline && deadlineStatus(m.assignment.deadline)?.color === '#b37700')
+
   return (
     <div className="p-8">
+      {/* Deadline alerts */}
+      {overdueMembers.length > 0 && (
+        <div className="flex items-center gap-3 px-5 py-3 rounded-xl mb-4" style={{ background: '#FEF2F0', border: '1.5px solid #F5675120' }}>
+          <span className="text-base">⚠️</span>
+          <div className="text-xs text-red-700">
+            <strong>{overdueMembers.length} collaborateur{overdueMembers.length > 1 ? 's' : ''}</strong> {overdueMembers.length > 1 ? 'ont' : 'a'} dépassé leur échéance de formation :&nbsp;
+            {overdueMembers.map(m => fullName(m)).join(', ')}
+          </div>
+        </div>
+      )}
+      {urgentMembers.length > 0 && (
+        <div className="flex items-center gap-3 px-5 py-3 rounded-xl mb-4" style={{ background: '#FFF8E6', border: '1.5px solid #FFC13D40' }}>
+          <span className="text-base">⏰</span>
+          <div className="text-xs text-yellow-800">
+            <strong>{urgentMembers.length} collaborateur{urgentMembers.length > 1 ? 's' : ''}</strong> {urgentMembers.length > 1 ? 'ont' : 'a'} une échéance dans moins de 7 jours.
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -191,7 +223,7 @@ export function FormationClient({ members: initial }: Props) {
                     {assigned.length === 0 ? (
                       <span className="text-[10px] text-gray-400 italic">Non assigné</span>
                     ) : (
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-col gap-1.5">
                         <div className="flex flex-wrap gap-1">
                           {assigned.map(d => {
                             const meta = DOMAIN_META[d as Domain]
@@ -203,9 +235,15 @@ export function FormationClient({ members: initial }: Props) {
                             )
                           })}
                         </div>
-                        {deadline && (
-                          <div className="text-[10px] text-gray-400">Échéance : {fmtDate(deadline)}</div>
-                        )}
+                        {deadline && (() => {
+                          const ds = deadlineStatus(deadline)
+                          return ds ? (
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full self-start"
+                              style={{ background: ds.bg, color: ds.color }}>
+                              {ds.label}
+                            </span>
+                          ) : null
+                        })()}
                       </div>
                     )}
                   </td>

@@ -34,8 +34,8 @@ export default async function EnterpriseDashboardLayout({ children }: { children
     { href: '/dashboard/entreprise/quiz',           label: 'Tests candidats', icon: '📝' },
     { href: '/dashboard/entreprise/collaborateurs', label: 'Collaborateurs',  icon: '👥' },
     { href: '/dashboard/entreprise/formation',      label: 'Formation groupe', icon: '🎓' },
-    { href: '/dashboard/entreprise/historique',     label: 'Historique',       icon: '📅', soon: true },
-    { href: '/dashboard/entreprise/sauvegardes',    label: 'Sauvegardés',      icon: '🔖', soon: true },
+    { href: '/dashboard/entreprise/historique',     label: 'Historique',        icon: '📅' },
+    { href: '/dashboard/entreprise/sauvegardes',    label: 'Modèles de tests',  icon: '🔖' },
   ]
 
   return (
@@ -73,7 +73,7 @@ export default async function EnterpriseDashboardLayout({ children }: { children
         <aside className="w-52 shrink-0 flex flex-col py-5 px-3"
           style={{ background: '#fff', borderRight: '1.5px solid #E8E8E8' }}>
           <nav className="flex flex-col gap-0.5">
-            {NAV.map(({ href, label, icon, soon }) => (
+            {NAV.map(({ href, label, icon, soon }: { href: string; label: string; icon: string; soon?: boolean }) => (
               <a key={href} href={soon ? undefined : href}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors hover:bg-gray-50"
                 style={{

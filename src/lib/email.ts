@@ -116,6 +116,49 @@ export async function sendStreakReminderEmail(to: string, firstName: string, str
   return resend.emails.send({ from: FROM, to, subject: `🔥 ${streakDays} jours de streak — ne t'arrête pas !`, html: baseHtml('Streak en danger', body) })
 }
 
+export async function sendForumReplyEmail(to: string, firstName: string, threadTitle: string, replyBody: string, threadUrl: string) {
+  const body = `
+    ${h1(`${firstName}, quelqu'un a répondu à votre discussion 💬`)}
+    ${p(`Nouvelle réponse sur votre fil <strong>${threadTitle}</strong> :`)}
+    <div style="background:#F7F9FF;border-left:3px solid #3183F7;padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0;">
+      <p style="margin:0;font-size:13px;color:#374151;line-height:1.6;">${replyBody}</p>
+    </div>
+    ${btn('Voir la réponse →', threadUrl)}
+    ${p('Vous recevez cet email car vous avez posté sur le forum Spread Finance.', true)}
+  `
+  return resend.emails.send({ from: FROM, to, subject: `💬 Nouvelle réponse — ${threadTitle}`, html: baseHtml('Réponse forum', body) })
+}
+
+export async function sendFormationDeadlineEmail(to: string, firstName: string, domains: string[], deadline: string, daysLeft: number) {
+  const isOverdue = daysLeft < 0
+  const body = `
+    ${h1(isOverdue
+      ? `${firstName}, une échéance de formation est dépassée ⚠️`
+      : `${firstName}, votre formation se termine dans ${daysLeft} jour${daysLeft > 1 ? 's' : ''} ⏰`
+    )}
+    ${p(`Parcours concernés : <strong>${domains.join(', ')}</strong>`)}
+    ${highlight(isOverdue ? 'Échéance dépassée' : 'Jours restants', isOverdue ? `${Math.abs(daysLeft)}j` : `${daysLeft}j`, isOverdue ? '#F56751' : '#FFC13D')}
+    ${p(`Date limite : <strong>${deadline}</strong>`)}
+    ${btn('Voir mon parcours →', `${APP_URL}/dashboard/progression`)}
+  `
+  return resend.emails.send({ from: FROM, to, subject: isOverdue ? '⚠️ Échéance de formation dépassée' : `⏰ Formation — ${daysLeft}j restant${daysLeft > 1 ? 's' : ''}`, html: baseHtml('Formation', body) })
+}
+
+export async function sendCandidateTestResultEmail(to: string, companyName: string, candidateName: string, testTitle: string, score: number, resultsUrl: string) {
+  const passed = score >= 70
+  const body = `
+    ${h1(`Nouveau résultat de test — ${testTitle}`)}
+    ${p(`<strong>${candidateName}</strong> vient de terminer votre test candidat.`)}
+    <div style="display:flex;gap:12px;margin:12px 0;">
+      ${highlight('Score', `${score}%`, passed ? '#36D399' : '#F56751')}
+      ${highlight('Résultat', passed ? 'Réussi' : 'Échoué', passed ? '#36D399' : '#F56751')}
+    </div>
+    ${btn('Voir les résultats détaillés →', resultsUrl)}
+    ${p(`Ce test a été créé par ${companyName} sur Spread Finance.`, true)}
+  `
+  return resend.emails.send({ from: FROM, to, subject: `📊 Résultat test : ${candidateName} — ${score}%`, html: baseHtml('Résultat test', body) })
+}
+
 export async function sendSubscriptionChangedEmail(to: string, firstName: string, newPlan: string) {
   const planLabels: Record<string, string> = { premium: 'Premium', platinum: 'Platinum', free: 'Free' }
   const planLabel = planLabels[newPlan] ?? newPlan

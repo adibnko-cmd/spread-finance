@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
+import { adminClient } from '@/lib/supabase/admin-server'
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
+import { sendForumReplyEmail } from '@/lib/email'
 
 const schema = z.object({
   thread_id: z.string().uuid(),
@@ -54,6 +56,26 @@ export async function POST(req: NextRequest) {
       body:     `${posterName} a répondu à votre sujet.`,
       link:     `/dashboard/forum/${thread_id}`,
     })
+
+    // Send email if author has notifications_email enabled
+    const db = adminClient()
+    const [{ data: authorProfile }, { data: { users } }] = await Promise.all([
+      db.from('profiles').select('first_name, notifications_email').eq('id', thread.user_id).single(),
+      db.auth.admin.listUsers({ perPage: 1000 }),
+    ])
+    if (authorProfile?.notifications_email) {
+      const authorEmail = users.find(u => u.id === thread.user_id)?.email
+      if (authorEmail) {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://spread-finance.fr'
+        sendForumReplyEmail(
+          authorEmail,
+          authorProfile.first_name ?? 'vous',
+          thread.title,
+          content.slice(0, 200) + (content.length > 200 ? '…' : ''),
+          `${appUrl}/dashboard/forum/${thread_id}`
+        ).catch(() => {})
+      }
+    }
   }
 
   return NextResponse.json(post)
