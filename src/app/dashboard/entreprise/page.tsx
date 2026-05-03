@@ -108,22 +108,24 @@ export default async function EnterpriseDashboardPage() {
                   <div className="text-[10px] text-gray-400">Validation par l&apos;équipe Spread Finance</div>
                 </div>
               </Link>
-              <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                style={{ border: '1.5px solid #E8E8E8', opacity: 0.5 }}>
+              <Link href="/dashboard/entreprise/quiz"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors hover:bg-gray-50"
+                style={{ border: '1.5px solid #E8E8E8' }}>
                 <span className="text-base">📝</span>
                 <div>
-                  <div className="text-xs font-semibold text-gray-800">Créer un quiz</div>
-                  <div className="text-[10px] text-gray-400">Bientôt — assigner à vos collaborateurs</div>
+                  <div className="text-xs font-semibold text-gray-800">Créer un test candidat</div>
+                  <div className="text-[10px] text-gray-400">Lien partageable — aucun compte requis</div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                style={{ border: '1.5px solid #E8E8E8', opacity: 0.5 }}>
+              </Link>
+              <Link href="/dashboard/entreprise/collaborateurs"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors hover:bg-gray-50"
+                style={{ border: '1.5px solid #E8E8E8' }}>
                 <span className="text-base">👥</span>
                 <div>
                   <div className="text-xs font-semibold text-gray-800">Gérer les collaborateurs</div>
-                  <div className="text-[10px] text-gray-400">Bientôt — associer des comptes utilisateurs</div>
+                  <div className="text-[10px] text-gray-400">Inviter et gérer les accès de votre équipe</div>
                 </div>
-              </div>
+              </Link>
             </div>
           </div>
 
