@@ -126,6 +126,15 @@ export default async function EnterpriseDashboardPage() {
                   <div className="text-[10px] text-gray-400">Inviter et gérer les accès de votre équipe</div>
                 </div>
               </Link>
+              <Link href="/dashboard/entreprise/formation"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors hover:bg-gray-50"
+                style={{ border: '1.5px solid #E8E8E8' }}>
+                <span className="text-base">🎓</span>
+                <div>
+                  <div className="text-xs font-semibold text-gray-800">Formation groupe</div>
+                  <div className="text-[10px] text-gray-400">Assigner des parcours — suivre la progression</div>
+                </div>
+              </Link>
             </div>
           </div>
 
