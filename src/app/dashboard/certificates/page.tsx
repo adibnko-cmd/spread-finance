@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
+import { CertificateDownloadButton } from './CertificateDownloadButton'
 
 export const metadata: Metadata = { title: 'Certificats — Spread Finance' }
 export const dynamic = 'force-dynamic'
@@ -20,10 +21,11 @@ export default async function CertificatesPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login?redirectTo=/dashboard/certificates')
 
-  const { data: progress } = await supabase
-    .from('chapter_progress')
-    .select('domain_slug, status')
-    .eq('user_id', user.id)
+  const [{ data: progress }, { data: profile }] = await Promise.all([
+    supabase.from('chapter_progress').select('domain_slug, status').eq('user_id', user.id),
+    supabase.from('profiles').select('first_name, last_name').eq('id', user.id).single(),
+  ])
+  const userName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Certifié'
 
   const validated = (progress ?? []).filter(p => p.status === 'validated')
   const totalValidated = validated.length
@@ -114,17 +116,10 @@ export default async function CertificatesPage() {
 
             {/* CTA */}
             {certUnlocked ? (
-              <button
-                onClick={() => alert('Téléchargement du certificat — disponible prochainement')}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-white transition-opacity hover:opacity-80"
-                style={{ background: '#3183F7' }}
-              >
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                  <path d="M6.5 1v8M3.5 7l3 3 3-3" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M1.5 11h10" stroke="white" strokeWidth="1.4" strokeLinecap="round"/>
-                </svg>
-                Télécharger le certificat
-              </button>
+              <CertificateDownloadButton
+                userName={userName}
+                domains={domainProgress.filter(d => d.done > 0).map(d => d.name.split(' ')[0])}
+              />
             ) : (
               <div className="text-[11px]" style={{ color: '#9CA3AF' }}>
                 Il vous reste <strong style={{ color: '#555' }}>{TOTAL_CHAPTERS - totalValidated} chapitres</strong> à valider pour obtenir ce certificat.

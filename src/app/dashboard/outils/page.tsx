@@ -7,7 +7,7 @@ const TOOLS = [
   {
     title: 'Calculateur Black-Scholes',
     desc: 'Pricer une option européenne (call/put) — valeur, Greeks, sensibilités.',
-    domain: 'Finance', color: '#3183F7', bg: '#EBF2FF', icon: '📈', soon: true,
+    domain: 'Finance', color: '#3183F7', bg: '#EBF2FF', icon: '📈', soon: false, href: '/dashboard/outils/black-scholes',
   },
   {
     title: 'Duration & Convexité',
@@ -61,60 +61,80 @@ export default function OutilsPage() {
         </div>
       </div>
 
-      {/* Coming soon banner */}
-      <div className="rounded-xl px-5 py-4 mb-6 flex items-center gap-3" style={{ background: '#FFF8E6', border: '1.5px solid #FFE0A3' }}>
-        <span className="text-xl">🔨</span>
+      {/* Info banner */}
+      <div className="rounded-xl px-5 py-4 mb-6 flex items-center gap-3" style={{ background: '#EBF2FF', border: '1.5px solid #3183F730' }}>
+        <span className="text-xl">📐</span>
         <div>
-          <div className="text-xs font-bold" style={{ color: '#b37700' }}>En cours de développement</div>
-          <div className="text-[11px]" style={{ color: '#c4900a' }}>
-            Ces outils seront disponibles progressivement. Créez un compte Premium pour y accéder en avant-première.
+          <div className="text-xs font-bold" style={{ color: '#1a5fc8' }}>Black-Scholes disponible</div>
+          <div className="text-[11px]" style={{ color: '#3183F7' }}>
+            Le pricer Black-Scholes est en ligne. D&apos;autres calculateurs arrivent progressivement.
           </div>
         </div>
       </div>
 
       {/* Grid */}
       <div className="grid grid-cols-2 gap-4">
-        {TOOLS.map(({ title, desc, domain, color, bg, icon, soon }) => (
-          <div
-            key={title}
-            className="bg-white rounded-xl p-5 relative"
-            style={{ border: '1.5px solid #E8E8E8', opacity: soon ? 0.85 : 1 }}
-          >
-            {soon && (
-              <span
-                className="absolute top-3 right-3 text-[9px] font-bold px-2 py-0.5 rounded-full"
-                style={{ background: '#FFF8E6', color: '#b37700' }}
-              >
-                Bientôt
-              </span>
-            )}
-
-            <div className="flex items-start gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: bg }}>
-                {icon}
-              </div>
-              <div>
-                <div className="text-xs font-bold text-gray-800 mb-0.5">{title}</div>
-                <span
-                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                  style={{ background: `${DOMAIN_COLORS[domain]}15`, color: DOMAIN_COLORS[domain] }}
-                >
-                  {domain}
-                </span>
-              </div>
-            </div>
-
-            <p className="text-[11px] text-gray-500 leading-relaxed mb-4">{desc}</p>
-
-            <button
-              disabled
-              className="w-full py-2 rounded-lg text-[11px] font-bold cursor-not-allowed"
-              style={{ background: '#F5F5F5', color: '#aaa' }}
+        {TOOLS.map(({ title, desc, domain, color, bg, icon, soon, ...rest }) => {
+          const href = 'href' in rest ? (rest as { href: string }).href : undefined
+          const card = (
+            <div
+              key={title}
+              className="bg-white rounded-xl p-5 relative"
+              style={{ border: `1.5px solid ${!soon ? '#3183F720' : '#E8E8E8'}`, opacity: soon ? 0.85 : 1 }}
             >
-              Prochainement
-            </button>
-          </div>
-        ))}
+              {soon ? (
+                <span
+                  className="absolute top-3 right-3 text-[9px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: '#FFF8E6', color: '#b37700' }}
+                >
+                  Bientôt
+                </span>
+              ) : (
+                <span
+                  className="absolute top-3 right-3 text-[9px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: '#E6FAF3', color: '#0d7a56' }}
+                >
+                  ✓ Disponible
+                </span>
+              )}
+
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: bg }}>
+                  {icon}
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-gray-800 mb-0.5">{title}</div>
+                  <span
+                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                    style={{ background: `${DOMAIN_COLORS[domain]}15`, color: DOMAIN_COLORS[domain] }}
+                  >
+                    {domain}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-gray-500 leading-relaxed mb-4">{desc}</p>
+
+              {soon ? (
+                <button
+                  disabled
+                  className="w-full py-2 rounded-lg text-[11px] font-bold cursor-not-allowed"
+                  style={{ background: '#F5F5F5', color: '#aaa' }}
+                >
+                  Prochainement
+                </button>
+              ) : (
+                <div
+                  className="w-full py-2 rounded-lg text-[11px] font-bold text-center"
+                  style={{ background: '#1C1C2E', color: '#fff' }}
+                >
+                  Ouvrir →
+                </div>
+              )}
+            </div>
+          )
+          return href ? <Link key={title} href={href}>{card}</Link> : <div key={title}>{card}</div>
+        })}
       </div>
 
       {/* Suggest */}
