@@ -30,12 +30,11 @@ export default async function EnterpriseDashboardLayout({ children }: { children
 
   const NAV = [
     { href: '/dashboard/entreprise',               label: 'Vue d\'ensemble',  icon: '📊' },
-    { href: '/dashboard/entreprise/jobs',           label: 'Offres d\'emploi', icon: '💼' },
-    { href: '/dashboard/entreprise/quiz',           label: 'Tests candidats', icon: '📝' },
-    { href: '/dashboard/entreprise/collaborateurs', label: 'Collaborateurs',  icon: '👥' },
+    { href: '/dashboard/entreprise/quiz',           label: 'Tests & Modèles',  icon: '📝' },
+    { href: '/dashboard/entreprise/collaborateurs', label: 'Collaborateurs',   icon: '👥' },
     { href: '/dashboard/entreprise/formation',      label: 'Formation groupe', icon: '🎓' },
-    { href: '/dashboard/entreprise/historique',     label: 'Historique',        icon: '📅' },
-    { href: '/dashboard/entreprise/sauvegardes',    label: 'Modèles de tests',  icon: '🔖' },
+    { href: '/dashboard/entreprise/jobs',           label: 'Offres d\'emploi', icon: '💼' },
+    { href: '/dashboard/entreprise/historique',     label: 'Historique',       icon: '📅' },
   ]
 
   return (

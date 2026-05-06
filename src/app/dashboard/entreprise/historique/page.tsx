@@ -32,28 +32,16 @@ export default async function HistoriquePage() {
 
   const db = adminClient()
 
-  const [
-    { data: results },
-    { data: members },
-    { data: tests },
-    { data: jobs },
-    { data: authData },
-  ] = await Promise.all([
-    db.from('candidate_results')
-      .select('id, candidate_name, candidate_email, score, completed_at, test_id')
-      .in('test_id',
-        db.from('candidate_tests').select('id').eq('enterprise_id', user.id) as unknown as string[]
-      )
-      .order('completed_at', { ascending: false })
-      .limit(50),
-    db.from('enterprise_members')
-      .select('user_id, joined_at')
-      .eq('enterprise_id', user.id)
-      .order('joined_at', { ascending: false }),
+  // Fetch tests first to get IDs for the .in() filter
+  const [{ data: tests }, { data: members }, { data: jobs }, { data: authData }] = await Promise.all([
     db.from('candidate_tests')
       .select('id, title, created_at')
       .eq('enterprise_id', user.id)
       .order('created_at', { ascending: false }),
+    db.from('enterprise_members')
+      .select('user_id, joined_at')
+      .eq('enterprise_id', user.id)
+      .order('joined_at', { ascending: false }),
     db.from('jobs')
       .select('id, title, posted_at')
       .eq('posted_by', user.id)
@@ -61,6 +49,15 @@ export default async function HistoriquePage() {
       .limit(20),
     db.auth.admin.listUsers({ perPage: 1000 }),
   ])
+
+  const testIds = (tests ?? []).map(t => t.id)
+  const { data: results } = testIds.length > 0
+    ? await db.from('candidate_results')
+        .select('id, candidate_name, candidate_email, score, completed_at, test_id')
+        .in('test_id', testIds)
+        .order('completed_at', { ascending: false })
+        .limit(50)
+    : { data: [] }
 
   const emailMap   = new Map((authData?.users ?? []).map(u => [u.id, u.email ?? '']))
   const testTitleMap = new Map((tests ?? []).map(t => [t.id, t.title]))

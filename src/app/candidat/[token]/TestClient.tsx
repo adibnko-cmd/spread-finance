@@ -28,9 +28,10 @@ interface Props {
   description: string | null
   questions:   Question[]
   timeLimit:   number | null
+  passScore:   number
 }
 
-export function TestClient({ token, title, description, questions, timeLimit }: Props) {
+export function TestClient({ token, title, description, questions, timeLimit, passScore }: Props) {
   const [phase,       setPhase]       = useState<Phase>('intro')
   const [name,        setName]        = useState('')
   const [email,       setEmail]       = useState('')
@@ -134,7 +135,7 @@ export function TestClient({ token, title, description, questions, timeLimit }: 
             </div>
             <div className="w-px h-8" style={{ background: '#E8E8E8' }} />
             <div>
-              <div className="text-2xl font-black" style={{ color: '#36D399' }}>70%</div>
+              <div className="text-2xl font-black" style={{ color: '#36D399' }}>{passScore}%</div>
               <div className="text-[10px] text-gray-400">seuil réussite</div>
             </div>
           </div>
@@ -259,7 +260,7 @@ export function TestClient({ token, title, description, questions, timeLimit }: 
 
   // ─── DONE ─────────────────────────────────────────────────────────────
   if (phase === 'done' && result) {
-    const passed = result.score >= 70
+    const passed = result.score >= passScore
 
     return (
       <div className="min-h-screen p-4" style={{ background: '#F5F6F8' }}>
@@ -279,7 +280,7 @@ export function TestClient({ token, title, description, questions, timeLimit }: 
             </div>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold"
               style={{ background: passed ? '#E6FAF3' : '#FEF2F0', color: passed ? '#0d7a56' : '#dc2626' }}>
-              {passed ? '✓ Test réussi' : '✗ Seuil non atteint (70%)'}
+              {passed ? '✓ Profil retenu — seuil atteint' : `✗ Seuil non atteint (${passScore}% requis)`}
             </div>
           </div>
 

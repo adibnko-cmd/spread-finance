@@ -29,6 +29,10 @@ export default async function DashboardPage() {
 
   if (!user) redirect('/auth/login?redirectTo=/dashboard')
 
+  // Les comptes entreprise ont leur propre dashboard
+  const { data: quickProfile } = await supabase.from('profiles').select('account_type').eq('id', user.id).single()
+  if (quickProfile?.account_type === 'enterprise') redirect('/dashboard/entreprise')
+
   // Récupérer toutes les données en parallèle
   const [profileRes, progressRes, quizRes, xpRes, cashRes, activityRes, sanityChapters, evalRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),

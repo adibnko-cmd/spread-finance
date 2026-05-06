@@ -117,6 +117,8 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const article = await getArticleBySlug(slug).catch(() => null)
   if (!article) notFound()
 
+  const isPremiumLocked = article.accessLevel === 'premium' && userPlan === 'free'
+
   const domain = DOMAIN_META[article.domain]
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const readingTime = article.estimatedReadingTime ?? computeReadingTime((article.content ?? []) as any)
@@ -251,14 +253,55 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         )}
 
         {/* Contenu */}
-        {article.content ? (
+        {isPremiumLocked ? (
+          <>
+            {/* Preview : first ~2 blocks visible, rest blurred */}
+            {article.content && article.content.length > 0 && (
+              <div className="relative">
+                <div style={{ maxHeight: 200, overflow: 'hidden', mask: 'linear-gradient(to bottom, black 40%, transparent 100%)' }}>
+                  <PortableText value={article.content.slice(0, 3)} components={ptComponents} />
+                </div>
+                <div className="absolute inset-0 pointer-events-none" />
+              </div>
+            )}
+            {/* Paywall CTA */}
+            <div
+              className="mt-6 rounded-2xl p-8 flex flex-col items-center text-center"
+              style={{ background: 'linear-gradient(135deg, #1C1C2E 0%, #2a2a45 100%)', border: '1.5px solid rgba(49,131,247,.25)' }}
+            >
+              <div className="w-10 h-10 rounded-full flex items-center justify-center mb-4"
+                style={{ background: 'rgba(49,131,247,.15)', border: '1.5px solid rgba(49,131,247,.3)' }}>
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <rect x="3" y="8" width="12" height="9" rx="2" stroke="#3183F7" strokeWidth="1.5"/>
+                  <path d="M6 8V5.5a3 3 0 016 0V8" stroke="#3183F7" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <div className="text-base font-black text-white mb-1">Article Premium</div>
+              <p className="text-sm text-white/50 mb-5 max-w-xs">
+                Cet article est réservé aux membres Premium. Passez Premium pour accéder à l&apos;intégralité du contenu.
+              </p>
+              <a
+                href="/pricing"
+                className="inline-block px-6 py-3 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90"
+                style={{ background: '#3183F7' }}
+              >
+                Passer Premium →
+              </a>
+              {!isAuthenticated && (
+                <a href={`/auth/login?redirectTo=/articles/${slug}`} className="mt-3 text-xs text-white/40 hover:text-white/60 transition-colors">
+                  Déjà membre ? Se connecter
+                </a>
+              )}
+            </div>
+          </>
+        ) : article.content ? (
           <PortableText value={article.content} components={ptComponents} />
         ) : (
           <p className="text-gray-400 text-sm">Contenu à venir.</p>
         )}
 
         {/* Bouton Lu */}
-        {isAuthenticated && (
+        {isAuthenticated && !isPremiumLocked && (
           <div className="mt-10 flex justify-center">
             <ChapterTracker
               chapterSlug={slug}
@@ -270,6 +313,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         )}
 
         {/* Quiz CTA */}
+        {!isPremiumLocked && (
         <div
           className="mt-8 p-5 rounded-2xl flex items-center justify-between"
           style={{ background: '#1C1C2E' }}
@@ -286,9 +330,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             Commencer le quiz →
           </Link>
         </div>
+        )}
 
         {/* Flashcards CTA */}
-        {FLASHCARD_SLUGS.has(article.slug) && (
+        {FLASHCARD_SLUGS.has(article.slug) && !isPremiumLocked && (
           <div
             className="mt-3 p-5 rounded-2xl flex items-center justify-between"
             style={{ background: '#1C1C2E' }}

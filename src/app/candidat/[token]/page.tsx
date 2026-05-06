@@ -10,7 +10,7 @@ export default async function CandidatTestPage({ params }: Props) {
 
   const { data: test } = await db
     .from('candidate_tests')
-    .select('id, title, description, question_count, time_limit, questions, is_active')
+    .select('id, title, description, question_count, time_limit, questions, is_active, pass_score')
     .eq('token', token)
     .single()
 
@@ -33,6 +33,7 @@ export default async function CandidatTestPage({ params }: Props) {
       description={test.description}
       questions={safeQuestions}
       timeLimit={test.time_limit}
+      passScore={test.pass_score ?? 70}
     />
   )
 }

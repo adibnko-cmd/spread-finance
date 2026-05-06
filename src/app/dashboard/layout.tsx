@@ -26,16 +26,19 @@ export default async function DashboardLayout({
     redirect('/auth/onboarding')
   }
 
+  // Les routes /dashboard/entreprise/* ont leur propre layout — on laisse passer sans shell étudiant.
+  // Un redirect ici créerait une boucle infinie car /dashboard/entreprise est enfant de /dashboard/.
+  if (profile?.account_type === 'enterprise') {
+    return <>{children}</>
+  }
+
   const userPlan  = (profile?.plan ?? 'free') as Plan
   const isAdmin   = profile?.is_admin ?? false
   const totalCash = (cashLog ?? []).reduce((sum, r) => sum + r.cash_earned, 0)
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: '#F5F6F8' }}>
-      {/* Sidebar fixe */}
       <DashboardSidebar userPlan={userPlan} isAdmin={isAdmin} />
-
-      {/* Contenu : top bar + scrollable */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <DashboardTopBar totalCash={totalCash} />
         <main className="flex-1 overflow-y-auto">

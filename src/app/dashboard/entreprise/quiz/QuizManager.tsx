@@ -11,10 +11,34 @@ const DOMAIN_OPTS = [
   { value: 'ml',      label: 'Machine Learning',            color: '#F56751' },
 ]
 
+const DOMAIN_COLORS: Record<string, { color: string; bg: string }> = {
+  finance: { color: '#3183F7', bg: '#EBF2FF' },
+  maths:   { color: '#A855F7', bg: '#F5F0FF' },
+  dev:     { color: '#1a5fc8', bg: '#E8EEFB' },
+  pm:      { color: '#b37700', bg: '#FFF8E6' },
+  ml:      { color: '#F56751', bg: '#FEF2F0' },
+}
+
+const TEMPLATES = [
+  { title: 'Analyste Quantitatif Junior', domains: ['finance', 'maths'] as string[], question_count: 15, time_limit: '30', pass_score: '70', icon: '📈' },
+  { title: 'Développeur Finance',         domains: ['dev', 'finance'] as string[],   question_count: 12, time_limit: '25', pass_score: '65', icon: '💻' },
+  { title: 'Data Scientist Finance',      domains: ['ml', 'maths', 'finance'] as string[], question_count: 20, time_limit: '40', pass_score: '70', icon: '🤖' },
+  { title: 'Chef de Projet IT Finance',   domains: ['pm', 'dev'] as string[],        question_count: 10, time_limit: '20', pass_score: '60', icon: '📋' },
+  { title: 'Profil Généraliste',          domains: ['finance', 'maths', 'dev', 'pm', 'ml'] as string[], question_count: 25, time_limit: '45', pass_score: '65', icon: '🎯' },
+  { title: 'Screening Rapide',            domains: ['finance'] as string[],           question_count: 5,  time_limit: '10', pass_score: '60', icon: '⚡' },
+]
+
+const LEVEL_LABELS: Record<number, { label: string; color: string; bg: string }> = {
+  1: { label: 'Débutant',       color: '#0d7a56', bg: '#E6FAF3' },
+  2: { label: 'Intermédiaire',  color: '#b37700', bg: '#FFF8E6' },
+  3: { label: 'Avancé',         color: '#dc2626', bg: '#FEF2F0' },
+}
+
 interface Question {
   text:        string
   explanation: string
   domain:      string
+  level:       number
   answers:     { text: string; isCorrect: boolean }[]
 }
 
@@ -31,7 +55,7 @@ interface Test {
   result_count:   number
 }
 
-const EMPTY = { title: '', description: '', domains: [] as string[], question_count: 10, time_limit: '' }
+const EMPTY = { title: '', description: '', domains: [] as string[], question_count: 10, time_limit: '', pass_score: '' }
 
 function domainColor(d: string) { return DOMAIN_OPTS.find(o => o.value === d)?.color ?? '#6B7280' }
 function domainLabel(d: string) { return DOMAIN_OPTS.find(o => o.value === d)?.label ?? d }
@@ -49,19 +73,19 @@ export function QuizManager({ tests: initial }: { tests: Test[] }) {
   const [formError, setFormError]   = useState('')
   const [copied, setCopied]         = useState<string | null>(null)
 
-  // Manual question selection
+  // Manuel question selection
   const [mode, setMode]                   = useState<'auto' | 'manual'>('auto')
   const [questionBank, setQuestionBank]   = useState<Record<string, Question[]>>({})
   const [loadingBank, setLoadingBank]     = useState(false)
   const [selectedQs, setSelectedQs]       = useState<Question[]>([])
   const [filterDomain, setFilterDomain]   = useState<string>('all')
+  const [filterLevel, setFilterLevel]     = useState<number | 'all'>('all')
 
   function toggleDomain(d: string) {
     setForm(f => ({
       ...f,
       domains: f.domains.includes(d) ? f.domains.filter(x => x !== d) : [...f.domains, d],
     }))
-    // Reset manual selection when domains change
     setSelectedQs([])
     setQuestionBank({})
   }
@@ -75,6 +99,7 @@ export function QuizManager({ tests: initial }: { tests: Test[] }) {
       const data = await res.json()
       setQuestionBank(data)
       setFilterDomain('all')
+      setFilterLevel('all')
     } catch {
       setFormError('Impossible de charger les questions')
     } finally {
@@ -96,9 +121,10 @@ export function QuizManager({ tests: initial }: { tests: Test[] }) {
   }
 
   const bankFlat = Object.values(questionBank).flat()
-  const visibleQuestions = filterDomain === 'all'
-    ? bankFlat
-    : (questionBank[filterDomain] ?? [])
+
+  const visibleQuestions = bankFlat
+    .filter(q => filterDomain === 'all' || q.domain === filterDomain)
+    .filter(q => filterLevel === 'all' || q.level === filterLevel)
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -114,6 +140,7 @@ export function QuizManager({ tests: initial }: { tests: Test[] }) {
         domains:        form.domains,
         question_count: mode === 'manual' ? selectedQs.length : form.question_count,
         time_limit:     form.time_limit ? parseInt(form.time_limit) : null,
+        pass_score:     form.pass_score ? parseInt(form.pass_score) : null,
       }
       if (mode === 'manual') body.manual_questions = selectedQs
 
@@ -153,11 +180,18 @@ export function QuizManager({ tests: initial }: { tests: Test[] }) {
 
   const bankLoaded = Object.keys(questionBank).length > 0
 
+  // Counts for difficulty filter badges
+  const levelCounts = bankFlat.reduce((acc, q) => {
+    const domain = filterDomain === 'all' || q.domain === filterDomain
+    if (domain) acc[q.level] = (acc[q.level] ?? 0) + 1
+    return acc
+  }, {} as Record<number, number>)
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <div className="text-lg font-black text-gray-900">Tests candidats</div>
+          <div className="text-lg font-black text-gray-900">Tests & Quiz candidats</div>
           <div className="text-sm text-gray-400 mt-0.5">
             Créez des tests et partagez un lien — aucun compte requis pour le candidat.
           </div>
@@ -170,6 +204,54 @@ export function QuizManager({ tests: initial }: { tests: Test[] }) {
           {showForm ? '× Fermer' : '+ Créer un test'}
         </button>
       </div>
+
+      {/* Modèles de tests */}
+      {!showForm && (
+        <div className="mb-6">
+          <div className="text-xs font-bold text-gray-500 uppercase mb-3">Modèles pré-configurés</div>
+          <div className="grid grid-cols-3 gap-3">
+            {TEMPLATES.map(t => (
+              <button
+                key={t.title}
+                type="button"
+                onClick={() => {
+                  setForm({ title: t.title, description: '', domains: t.domains, question_count: t.question_count, time_limit: t.time_limit, pass_score: t.pass_score })
+                  setMode('auto')
+                  setSelectedQs([])
+                  setQuestionBank({})
+                  setShowForm(true)
+                  setFormError('')
+                }}
+                className="bg-white rounded-xl p-4 text-left hover:bg-blue-50 transition-colors group"
+                style={{ border: '1.5px solid #E8E8E8' }}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">{t.icon}</span>
+                  <span className="text-xs font-bold text-gray-800 leading-snug">{t.title}</span>
+                </div>
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {t.domains.map(d => (
+                    <span key={d} className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{ background: DOMAIN_COLORS[d]?.bg, color: DOMAIN_COLORS[d]?.color }}>
+                      {domainLabel(d)}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                  <span>{t.question_count}q</span>
+                  <span>·</span>
+                  <span>{t.time_limit} min</span>
+                  <span>·</span>
+                  <span>Seuil {t.pass_score}%</span>
+                  <span className="ml-auto text-[10px] font-bold text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                    Utiliser →
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Formulaire création */}
       {showForm && (
@@ -241,9 +323,9 @@ export function QuizManager({ tests: initial }: { tests: Test[] }) {
               </div>
             </div>
 
-            {/* AUTO mode settings */}
+            {/* AUTO mode */}
             {mode === 'auto' && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nombre de questions</label>
                   <select
@@ -267,10 +349,25 @@ export function QuizManager({ tests: initial }: { tests: Test[] }) {
                     {[10, 15, 20, 30, 45, 60].map(n => <option key={n} value={n}>{n} minutes</option>)}
                   </select>
                 </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Seuil de validation (optionnel)</label>
+                  <div className="relative">
+                    <input
+                      type="number" min="0" max="100"
+                      value={form.pass_score}
+                      onChange={e => setForm(f => ({ ...f, pass_score: e.target.value }))}
+                      placeholder="Ex: 70"
+                      className="w-full px-3 py-2 pr-7 rounded-xl text-sm text-gray-800 bg-gray-50 outline-none"
+                      style={{ border: '1.5px solid #E8E8E8' }}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
+                  </div>
+                  <div className="text-[9px] text-gray-400 mt-0.5">Score min. affiché au candidat</div>
+                </div>
               </div>
             )}
 
-            {/* MANUAL mode — question picker */}
+            {/* MANUAL mode */}
             {mode === 'manual' && (
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-3">
@@ -295,7 +392,7 @@ export function QuizManager({ tests: initial }: { tests: Test[] }) {
                       className="self-end px-4 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-50 transition-opacity"
                       style={{ background: '#3183F7' }}
                     >
-                      {loadingBank ? 'Chargement…' : 'Charger les questions →'}
+                      {loadingBank ? 'Chargement…' : 'Charger la bibliothèque →'}
                     </button>
                   ) : (
                     <div className="self-end text-xs font-bold px-3 py-2 rounded-xl" style={{ background: '#E6FAF3', color: '#0d7a56' }}>
@@ -307,14 +404,14 @@ export function QuizManager({ tests: initial }: { tests: Test[] }) {
                 {bankLoaded && (
                   <div className="rounded-xl overflow-hidden" style={{ border: '1.5px solid #E8E8E8' }}>
                     {/* Domain filter tabs */}
-                    <div className="flex gap-0 overflow-x-auto" style={{ borderBottom: '1px solid #F0F1F3' }}>
+                    <div className="flex gap-0 overflow-x-auto bg-gray-50" style={{ borderBottom: '1px solid #F0F1F3' }}>
                       {['all', ...form.domains].map(d => (
                         <button
                           key={d} type="button"
                           onClick={() => setFilterDomain(d)}
                           className="px-4 py-2 text-[10px] font-bold whitespace-nowrap transition-colors flex-shrink-0"
                           style={{
-                            background: filterDomain === d ? '#F5F6F8' : '#fff',
+                            background: filterDomain === d ? '#fff' : 'transparent',
                             color: filterDomain === d ? '#1C1C2E' : '#9CA3AF',
                             borderBottom: filterDomain === d ? '2px solid #1C1C2E' : '2px solid transparent',
                           }}
@@ -324,14 +421,46 @@ export function QuizManager({ tests: initial }: { tests: Test[] }) {
                       ))}
                     </div>
 
+                    {/* Difficulty filter */}
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-white" style={{ borderBottom: '1px solid #F5F6F8' }}>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase mr-1">Niveau</span>
+                      <button
+                        type="button"
+                        onClick={() => setFilterLevel('all')}
+                        className="px-2.5 py-1 rounded-full text-[10px] font-bold transition-all"
+                        style={filterLevel === 'all'
+                          ? { background: '#1C1C2E', color: '#fff' }
+                          : { background: '#F5F6F8', color: '#6B7280' }}
+                      >
+                        Tous
+                      </button>
+                      {([1, 2, 3] as const).map(lvl => {
+                        const meta = LEVEL_LABELS[lvl]
+                        const count = levelCounts[lvl] ?? 0
+                        return (
+                          <button
+                            key={lvl} type="button"
+                            onClick={() => setFilterLevel(lvl)}
+                            className="px-2.5 py-1 rounded-full text-[10px] font-bold transition-all"
+                            style={filterLevel === lvl
+                              ? { background: meta.color, color: '#fff' }
+                              : { background: meta.bg, color: meta.color }}
+                          >
+                            {meta.label} ({count})
+                          </button>
+                        )
+                      })}
+                    </div>
+
                     {/* Questions list */}
-                    <div className="max-h-64 overflow-y-auto bg-white">
+                    <div className="max-h-72 overflow-y-auto bg-white">
                       {visibleQuestions.length === 0 ? (
-                        <div className="py-6 text-center text-xs text-gray-400">Aucune question disponible pour ce domaine</div>
+                        <div className="py-6 text-center text-xs text-gray-400">Aucune question pour ce filtre</div>
                       ) : (
                         visibleQuestions.map((q, i) => {
-                          const sel = isSelected(q)
+                          const sel      = isSelected(q)
                           const disabled = !sel && selectedQs.length >= 30
+                          const lvlMeta  = LEVEL_LABELS[q.level] ?? LEVEL_LABELS[1]
                           return (
                             <div
                               key={i}
@@ -355,12 +484,20 @@ export function QuizManager({ tests: initial }: { tests: Test[] }) {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="text-xs text-gray-800 leading-snug line-clamp-2">{q.text}</div>
-                                <span
-                                  className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-1"
-                                  style={{ background: `${domainColor(q.domain)}18`, color: domainColor(q.domain) }}
-                                >
-                                  {domainLabel(q.domain)}
-                                </span>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <span
+                                    className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                                    style={{ background: `${domainColor(q.domain)}18`, color: domainColor(q.domain) }}
+                                  >
+                                    {domainLabel(q.domain)}
+                                  </span>
+                                  <span
+                                    className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                                    style={{ background: lvlMeta.bg, color: lvlMeta.color }}
+                                  >
+                                    {lvlMeta.label}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           )

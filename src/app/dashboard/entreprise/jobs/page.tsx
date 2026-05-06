@@ -8,11 +8,18 @@ export default async function EnterpriseJobsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data: jobs } = await supabase
-    .from('jobs')
-    .select('id, title, company, location, type, domain_slug, salary_min, salary_max, description, apply_url, is_active, posted_at')
-    .eq('posted_by', user.id)
-    .order('posted_at', { ascending: false })
+  const [{ data: jobs }, { data: ep }] = await Promise.all([
+    supabase
+      .from('jobs')
+      .select('id, title, company, location, type, domain_slug, salary_min, salary_max, description, apply_url, is_active, posted_at')
+      .eq('posted_by', user.id)
+      .order('posted_at', { ascending: false }),
+    supabase
+      .from('enterprise_profiles')
+      .select('company_name')
+      .eq('id', user.id)
+      .maybeSingle(),
+  ])
 
-  return <EnterpriseJobsClient jobs={jobs ?? []} />
+  return <EnterpriseJobsClient jobs={jobs ?? []} companyName={ep?.company_name ?? ''} />
 }

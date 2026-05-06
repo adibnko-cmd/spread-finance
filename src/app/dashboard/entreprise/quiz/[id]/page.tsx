@@ -14,7 +14,7 @@ export default async function TestResultsPage({ params }: Props) {
 
   const { data: test } = await supabase
     .from('candidate_tests')
-    .select('id, title, description, domains, question_count, time_limit, is_active, created_at, token')
+    .select('id, title, description, domains, question_count, time_limit, is_active, created_at, token, pass_score')
     .eq('id', id)
     .eq('enterprise_id', user.id)
     .single()
@@ -23,22 +23,29 @@ export default async function TestResultsPage({ params }: Props) {
 
   const { data: results } = await supabase
     .from('candidate_results')
-    .select('id, candidate_name, candidate_email, score, correct_answers, total_questions, time_seconds, completed_at')
+    .select('id, candidate_name, candidate_email, score, correct_answers, total_questions, time_seconds, completed_at, status, hr_note')
     .eq('test_id', id)
     .order('completed_at', { ascending: false })
 
   const allResults = results ?? []
+  const threshold = test.pass_score ?? 70
   const avg = allResults.length > 0
     ? Math.round(allResults.reduce((s, r) => s + r.score, 0) / allResults.length)
     : null
   const passRate = allResults.length > 0
-    ? Math.round((allResults.filter(r => r.score >= 70).length / allResults.length) * 100)
+    ? Math.round((allResults.filter(r => r.score >= threshold).length / allResults.length) * 100)
     : null
+
+  const mappedResults = allResults.map(r => ({
+    ...r,
+    status: (r.status ?? 'pending') as 'pending' | 'retained' | 'rejected',
+    hr_note: r.hr_note ?? null,
+  }))
 
   return (
     <TestResultsClient
-      test={{ ...test, domains: test.domains ?? [] }}
-      results={allResults}
+      test={{ ...test, domains: test.domains ?? [], pass_score: test.pass_score ?? null }}
+      results={mappedResults}
       stats={{ avg, passRate, total: allResults.length }}
     />
   )

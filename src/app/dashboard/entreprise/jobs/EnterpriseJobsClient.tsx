@@ -29,7 +29,7 @@ const EMPTY = {
   salary_min: '', salary_max: '', description: '', apply_url: '',
 }
 
-export function EnterpriseJobsClient({ jobs: initial }: { jobs: Job[] }) {
+export function EnterpriseJobsClient({ jobs: initial, companyName }: { jobs: Job[]; companyName: string }) {
   const [jobs, setJobs]       = useState(initial)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm]       = useState(EMPTY)
@@ -47,6 +47,7 @@ export function EnterpriseJobsClient({ jobs: initial }: { jobs: Job[] }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          company: companyName,
           salary_min: form.salary_min ? parseInt(form.salary_min) : null,
           salary_max: form.salary_max ? parseInt(form.salary_max) : null,
           domain_slug: form.domain_slug || null,
@@ -105,6 +106,12 @@ export function EnterpriseJobsClient({ jobs: initial }: { jobs: Job[] }) {
             </div>
           )}
           <form onSubmit={handleSubmit}>
+            {/* Entreprise — lecture seule, tirée du profil */}
+            <div className="mb-4 px-3 py-2.5 rounded-lg flex items-center gap-2" style={{ background: '#F5F6F8', border: '1.5px solid #E8E8E8' }}>
+              <span className="text-[10px] font-bold text-gray-400 uppercase">Entreprise</span>
+              <span className="text-xs font-semibold text-gray-800">{companyName || '—'}</span>
+              <span className="text-[9px] text-gray-400 ml-auto">Rempli automatiquement depuis votre profil</span>
+            </div>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Titre du poste *</label>

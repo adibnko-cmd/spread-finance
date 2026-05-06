@@ -16,6 +16,7 @@ const schema = z.object({
   domains:            z.array(z.enum(['finance','maths','dev','pm','ml'])).min(1),
   question_count:     z.number().int().min(3).max(30),
   time_limit:         z.number().int().min(1).max(120).nullable().optional(),
+  pass_score:         z.number().int().min(0).max(100).nullable().optional(),
   manual_questions:   z.array(questionSchema).min(3).max(30).optional(),
 })
 
@@ -140,7 +141,7 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(await req.json())
   if (!parsed.success) return NextResponse.json({ error: 'Données invalides' }, { status: 400 })
 
-  const { title, description, domains, question_count, time_limit, manual_questions } = parsed.data
+  const { title, description, domains, question_count, time_limit, pass_score, manual_questions } = parsed.data
 
   let selected: Array<{ text: string; explanation: string; domain: string; answers: { text: string; isCorrect: boolean }[] }> = []
 
@@ -188,9 +189,10 @@ export async function POST(req: NextRequest) {
       domains,
       question_count: selected.length,
       time_limit:     time_limit ?? null,
+      pass_score:     pass_score ?? null,
       questions:      selected,
     })
-    .select('id, title, description, token, domains, question_count, time_limit, is_active, created_at')
+    .select('id, title, description, token, domains, question_count, time_limit, pass_score, is_active, created_at')
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
