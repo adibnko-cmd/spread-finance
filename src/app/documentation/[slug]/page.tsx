@@ -2,7 +2,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { SiteFooter } from '@/components/layout/SiteFooter'
 import { PortableText, type PortableTextComponents } from '@portabletext/react'
-import { getChapterBySlug } from '@/lib/sanity/client'
+import { getChapterBySlug, getEvaluationsByDomain } from '@/lib/sanity/client'
+import DocSidebar, { type DocSidebarChapter } from '@/components/documentation/DocSidebar'
 import ExampleTabs from '@/components/ui/ExampleTabs'
 import { getDocumentationStructure } from '@/lib/sanity/queries'
 import { createClient } from '@/lib/supabase/server'
@@ -156,6 +157,10 @@ export default async function ChapterPage({
 
   if (!chapter) notFound()
 
+  // Lien « Évaluation de la partie » seulement si l'évaluation de niveau 1 existe (même règle que SF-QUIZ-01)
+  const evalDocs = (await getEvaluationsByDomain(chapter.domain).catch(() => [])) as Array<{ part: number; level: number; questionCount?: number }>
+  const evalParts = new Set(evalDocs.filter(e => e.level === 1 && (e.questionCount ?? 0) > 0).map(e => e.part))
+
   // Auth + plan + progress
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -294,113 +299,15 @@ export default async function ChapterPage({
 
       {/* ── Layout ── */}
       <div className="flex flex-1">
-        {/* Sidebar gauche — nav chapitres */}
-        <aside
-          className="w-56 flex-shrink-0 overflow-y-auto sticky top-14"
-          style={{ background: '#F9FAFB', borderRight: '1px solid #EBEBEB', height: 'calc(100vh - 56px)' }}
-        >
-          <div className="p-3 pt-4">
-            {/* Recherche */}
-            <form action="/documentation" method="GET" className="mb-3">
-              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg" style={{ background: '#F0F0F0', border: '1px solid #E4E4E4' }}>
-                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="flex-shrink-0">
-                  <circle cx="5" cy="5" r="3.5" stroke="#9CA3AF" strokeWidth="1.3"/>
-                  <path d="M8 8l2 2" stroke="#9CA3AF" strokeWidth="1.3" strokeLinecap="round"/>
-                </svg>
-                <input
-                  type="search"
-                  name="q"
-                  placeholder="Rechercher..."
-                  className="flex-1 bg-transparent text-[11px] text-gray-700 outline-none placeholder:text-gray-400 min-w-0"
-                />
-              </div>
-            </form>
-
-            {/* Raccourcis rapides */}
-            <div className="flex items-center gap-1 mb-4">
-              <Link href="/" className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-700 px-2 py-1 rounded-md hover:bg-gray-100 transition-colors">
-                <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M1 6l5-4 5 4v5a.8.8 0 01-.8.8H1.8A.8.8 0 011 11V6z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>
-                Accueil
-              </Link>
-              <Link href="/articles" className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-700 px-2 py-1 rounded-md hover:bg-gray-100 transition-colors">
-                <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M2 6h8M2 9h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
-                Articles
-              </Link>
-            </div>
-
-            <Link
-              href={`/documentation?domain=${chapter.domain}`}
-              className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 hover:text-gray-800 mb-4 transition-colors"
-            >
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                <path d="M7 5H3M3 5l2.5-2.5M3 5l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              {domainName}
-            </Link>
-
-            {/* Chapitres regroupés par partie */}
-            {(() => {
-              type ChapterEntry = { _id: string; slug: string; title: string; domain: string; part: number; partTitle: string; order: number }
-              const byPart = new Map<number, ChapterEntry[]>()
-              for (const c of domainChapters as ChapterEntry[]) {
-                const list = byPart.get(c.part) ?? []
-                list.push(c)
-                byPart.set(c.part, list)
-              }
-              const sortedParts = Array.from(byPart.entries()).sort(([a], [b]) => a - b)
-
-              return sortedParts.map(([partNum, chapters]) => (
-                <div key={partNum} className="mb-3">
-                  <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 px-1">
-                    Partie {partNum} — {chapters[0].partTitle ?? ''}
-                  </div>
-
-                  {chapters.map(c => {
-                    const isActive = c.slug === slug
-                    return (
-                      <Link
-                        key={c._id}
-                        href={`/documentation/${c.slug}`}
-                        className="flex items-center gap-2 px-2.5 py-2 rounded-lg mb-0.5 transition-colors"
-                        style={{
-                          background: isActive ? `${domainColor}12` : 'transparent',
-                          border: `1.5px solid ${isActive ? `${domainColor}35` : 'transparent'}`,
-                        }}
-                      >
-                        <div
-                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                          style={{ background: isActive ? domainColor : '#D1D5DB' }}
-                        />
-                        <span
-                          className="text-[11px] leading-snug flex-1"
-                          style={{ color: isActive ? '#111' : '#6B7280', fontWeight: isActive ? 600 : 400 }}
-                        >
-                          {c.title}
-                        </span>
-                      </Link>
-                    )
-                  })}
-
-                  {/* Lien évaluation de la partie */}
-                  <Link
-                    href={`/evaluation/${chapter.domain}/${partNum}/1`}
-                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg mt-1 mb-0.5 transition-colors hover:bg-gray-100"
-                    style={{ border: `1.5px dashed ${domainColor}50` }}
-                  >
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                      <circle cx="5" cy="5" r="3.5" stroke={domainColor} strokeWidth="1.2"/>
-                      <path d="M3.5 5c.2-.6.7-1 1.5-1s1.5.4 1.5 1c0 .8-1.5 1-1.5 1.5" stroke={domainColor} strokeWidth="1.1" strokeLinecap="round"/>
-                      <circle cx="5" cy="7.5" r=".5" fill={domainColor}/>
-                    </svg>
-                    <span className="text-[10px] font-semibold" style={{ color: domainColor }}>
-                      Évaluation de la partie
-                    </span>
-                  </Link>
-                </div>
-              ))
-            })()}
-          </div>
-        </aside>
+        {/* Sidebar gauche — même barre que /documentation, domaine du chapitre ouvert (SF-DOC-01) */}
+        <DocSidebar
+          chapters={allChapters as DocSidebarChapter[]}
+          activeDomain={chapter.domain}
+          activeSlug={slug}
+          evalParts={evalParts}
+          className="sticky top-14"
+          style={{ height: 'calc(100vh - 56px)' }}
+        />
 
         {/* Contenu principal */}
         <main className="flex-1" id="chapter-main">
