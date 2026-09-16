@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { SiteFooter } from '@/components/layout/SiteFooter'
 import { PortableText, type PortableTextComponents } from '@portabletext/react'
 import { getChapterBySlug } from '@/lib/sanity/client'
 import ExampleTabs from '@/components/ui/ExampleTabs'
@@ -689,6 +690,8 @@ export default async function ChapterPage({
                 Partager ce chapitre sur LinkedIn
               </a>
             </div>
+
+            <SiteFooter variant="reading" />
           </div>
         </main>
 

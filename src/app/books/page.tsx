@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { SiteFooter } from '@/components/layout/SiteFooter'
 import { createClient } from '@/lib/supabase/server'
 import { PublicNav } from '@/components/layout/PublicNav'
 
@@ -207,16 +208,7 @@ export default async function BooksPage() {
       </section>
 
       {/* FOOTER */}
-      <footer style={{ background: '#292929' }} className="px-8 py-8">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div className="text-white/30 text-xs">© 2026 Spread Finance.</div>
-          <div className="flex gap-4">
-            {[['/documentation', 'Documentation'], ['/about', 'À propos'], ['/elearning', 'E-Learning'], ['/entreprise', 'Entreprise'], ['/glossaire', 'Glossaire']].map(([href, l]) => (
-              <Link key={href} href={href} className="text-white/30 hover:text-white/60 text-xs">{l}</Link>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </main>
   )
 }

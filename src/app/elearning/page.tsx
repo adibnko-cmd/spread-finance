@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { SiteFooter } from '@/components/layout/SiteFooter'
 import { createClient } from '@/lib/supabase/server'
 import { PublicNav } from '@/components/layout/PublicNav'
 
@@ -192,16 +193,7 @@ export default async function ElearningPage() {
       </section>
 
       {/* FOOTER */}
-      <footer style={{ background: '#292929' }} className="px-8 py-8">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div className="text-white/30 text-xs">© 2026 Spread Finance.</div>
-          <div className="flex gap-4">
-            {([['/documentation', 'Documentation'], ['/about', 'À propos'], ['/glossaire', 'Glossaire'], ['/entreprise', 'Entreprise'], ['/books', 'Livres']] as [string,string][]).map(([href, l]) => (
-              <Link key={href} href={href} className="text-white/30 hover:text-white/60 text-[11px] whitespace-nowrap">{l}</Link>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </main>
   )
 }

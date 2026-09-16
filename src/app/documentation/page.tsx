@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SiteFooter } from '@/components/layout/SiteFooter'
 import { getChaptersByDomain } from '@/lib/sanity/client'
 import { createClient } from '@/lib/supabase/server'
 import type { SanityChapter } from '@/types'
@@ -270,6 +271,7 @@ export default async function DocumentationPage({
               </div>
             ))}
           </div>
+          <SiteFooter variant="reading" />
         </main>
 
         {/* SIDEBAR DROITE — progression */}
