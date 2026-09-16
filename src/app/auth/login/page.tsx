@@ -109,7 +109,7 @@ function LoginForm() {
         </div>
 
         <div className="flex gap-5">
-          {[{ n: '32', l: 'chapitres' }, { n: '5', l: 'domaines' }, { n: '100%', l: 'gratuit' }].map(({ n, l }) => (
+          {[{ n: '5', l: 'domaines' }, { n: '100%', l: 'gratuit' }].map(({ n, l }) => (
             <div key={l}>
               <div className="text-white font-black text-lg">{n}</div>
               <div className="text-white/40 text-xs">{l}</div>

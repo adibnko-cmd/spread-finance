@@ -71,7 +71,7 @@ export async function sendWelcomeEmail(to: string, firstName: string) {
     ${p('Tu as rejoint la plateforme d\'apprentissage dédiée à la finance de marché et à l\'informatique. Tout commence maintenant.')}
     ${p('Voici ce que tu peux faire dès aujourd\'hui :')}
     <ul style="margin:0 0 16px;padding-left:20px;color:#374151;font-size:14px;line-height:2;">
-      <li>📖 Accéder aux <strong>32 chapitres</strong> sur 5 domaines</li>
+      <li>📖 Accéder à la <strong>documentation</strong> sur 5 domaines</li>
       <li>🧠 Passer des <strong>quiz</strong> pour valider tes acquis</li>
       <li>⭐ Gagner des <strong>XP</strong> et monter dans le classement</li>
     </ul>

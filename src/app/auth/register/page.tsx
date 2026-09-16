@@ -119,7 +119,7 @@ export default function RegisterPage() {
           </p>
           <div className="flex flex-col gap-2.5">
             {[
-              '32 chapitres · 5 domaines · 100% en français',
+              '5 domaines · 100% en français',
               'Quiz, flashcards et suivi de progression',
               'Gamification, badges et certifications',
             ].map(item => (
@@ -136,7 +136,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="flex gap-6 pt-6" style={{ borderTop: '1px solid rgba(255,255,255,.09)' }}>
-          {[['32', 'chapitres'], ['5', 'domaines'], ['0€', 'pour commencer']].map(([n, l]) => (
+          {[['5', 'domaines'], ['0€', 'pour commencer']].map(([n, l]) => (
             <div key={l}>
               <div className="text-white font-black text-lg">{n}</div>
               <div className="text-white/40 text-xs">{l}</div>

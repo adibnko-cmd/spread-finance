@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { domainProgress, type PublishedChapters } from '@/lib/content-stats'
 import { SiteFooter } from '@/components/layout/SiteFooter'
 import { getChaptersByDomain } from '@/lib/sanity/client'
 import { createClient } from '@/lib/supabase/server'
@@ -8,11 +9,11 @@ import SearchTrigger from '@/components/ui/SearchTrigger'
 export const dynamic = 'force-dynamic'
 
 const DOMAIN_META = {
-  finance: { name: 'Finance de marché',        color: '#3183F7', chapters: 8 },
-  maths:   { name: 'Mathématiques financières', color: '#A855F7', chapters: 6 },
-  dev:     { name: 'Développement IT',          color: '#1a5fc8', chapters: 7 },
-  pm:      { name: 'Gestion de projet',         color: '#FFC13D', chapters: 5 },
-  ml:      { name: 'Machine Learning',          color: '#F56751', chapters: 6 },
+  finance: { name: 'Finance de marché',        color: '#3183F7' },
+  maths:   { name: 'Mathématiques financières', color: '#A855F7' },
+  dev:     { name: 'Développement IT',          color: '#1a5fc8' },
+  pm:      { name: 'Gestion de projet',         color: '#FFC13D' },
+  ml:      { name: 'Machine Learning',          color: '#F56751' },
 }
 
 type DomainSlug = keyof typeof DOMAIN_META
@@ -37,17 +38,22 @@ export default async function DocumentationPage({
   }
 
   // Progression par domaine
-  let progressByDomain: Record<string, number> = {}
+  // SF-DOC-02 (2026-09-16) : on ne compte que des chapitres distincts ET publiés (voir lib/content-stats).
+  let progressRows: Array<{ chapter_slug: string; domain_slug: string; status: string }> = []
   if (user) {
     const { data: progressData } = await supabase
       .from('chapter_progress')
-      .select('domain_slug')
+      .select('chapter_slug, domain_slug, status')
       .eq('user_id', user.id)
       .in('status', ['completed', 'validated'])
-    for (const row of progressData ?? []) {
-      progressByDomain[row.domain_slug] = (progressByDomain[row.domain_slug] ?? 0) + 1
-    }
+    progressRows = progressData ?? []
   }
+  const published: PublishedChapters = Object.fromEntries(
+    Object.keys(DOMAIN_META).map(d => [d, new Set(chapters.filter(c => c.domain === d).map(c => {
+      const s = c.slug as unknown as string | { current: string }
+      return typeof s === 'string' ? s : s?.current
+    }).filter(Boolean) as string[])])
+  )
 
   // Grouper par domaine → partie → chapitres
   const byDomain = Object.fromEntries(
@@ -134,7 +140,7 @@ export default async function DocumentationPage({
                 >
                   <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: meta.color }} />
                   <span className="text-xs font-bold text-gray-800 flex-1">{meta.name}</span>
-                  <span className="text-[10px] text-gray-400">{meta.chapters}</span>
+                  <span className="text-[10px] text-gray-400">{(byDomain[slug] ?? []).length}</span>
                   <span className="text-xs text-gray-400">{isActive ? '▾' : '›'}</span>
                 </Link>
 
@@ -278,17 +284,15 @@ export default async function DocumentationPage({
         <aside className="w-44 flex-shrink-0 p-4 overflow-y-auto" style={{ borderLeft: '1px solid #EBEBEB', background: '#FAFAFA' }}>
           <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3">Progression</div>
           {(Object.entries(DOMAIN_META) as [DomainSlug, typeof DOMAIN_META.finance][]).map(([slug, meta]) => {
-            const total = (byDomain[slug] ?? []).length || meta.chapters
-            const done  = progressByDomain[slug] ?? 0
-            const pct   = total > 0 ? Math.round((done / total) * 100) : 0
+            const { pct } = domainProgress(progressRows, published, slug, ['completed', 'validated'])
             return (
               <div key={slug} className="mb-3">
                 <div className="flex justify-between mb-1">
                   <span className="text-[10px] font-semibold text-gray-600">{meta.name.split(' de')[0].split(' fi')[0]}</span>
-                  <span className="text-[10px] font-bold" style={{ color: pct > 0 ? meta.color : '#9CA3AF' }}>{pct}%</span>
+                  <span className="text-[10px] font-bold" style={{ color: pct ? meta.color : '#9CA3AF' }}>{pct === null ? '—' : `${pct}%`}</span>
                 </div>
                 <div className="h-1 rounded-full bg-gray-200 overflow-hidden">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: meta.color }} />
+                  <div className="h-full rounded-full transition-all" style={{ width: `${pct ?? 0}%`, background: meta.color }} />
                 </div>
               </div>
             )

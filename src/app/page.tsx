@@ -6,6 +6,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SiteFooter } from '@/components/layout/SiteFooter'
 import { createClient } from '@/lib/supabase/server'
+import { getPublishedChapters } from '@/lib/content-stats'
 
 export const metadata: Metadata = {
   title: 'Spread Finance — IT & Finance de marché',
@@ -16,6 +17,7 @@ export default async function HomePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const isAuthenticated = !!user
+  const published = await getPublishedChapters()   // SF-DOC-05 : compteurs lus dans Sanity
 
   return (
     <main className="min-h-screen">
@@ -125,7 +127,6 @@ export default async function HomePage() {
             style={{ borderTop: '1px solid rgba(255,255,255,.09)' }}
           >
             {[
-              { n: '32', l: 'chapitres' },
               { n: '5',  l: 'domaines' },
               { n: '100%', l: 'en français' },
             ].map(({ n, l }) => (
@@ -194,12 +195,12 @@ export default async function HomePage() {
           <h2 className="text-2xl font-black text-gray-800 mb-6">Choisissez votre domaine</h2>
           <div className="grid grid-cols-5 gap-3">
             {[
-              { slug: 'finance', name: 'Finance de marché', color: '#3183F7', chapters: 8 },
-              { slug: 'maths',   name: 'Maths financières', color: '#A855F7', chapters: 6 },
-              { slug: 'dev',     name: 'Développement IT',  color: '#1a5fc8', chapters: 7 },
-              { slug: 'pm',      name: 'Gestion de projet', color: '#FFC13D', chapters: 5 },
-              { slug: 'ml',      name: 'Machine Learning',  color: '#F56751', chapters: 6 },
-            ].map(({ slug, name, color, chapters }) => (
+              { slug: 'finance', name: 'Finance de marché', color: '#3183F7' },
+              { slug: 'maths',   name: 'Maths financières', color: '#A855F7' },
+              { slug: 'dev',     name: 'Développement IT',  color: '#1a5fc8' },
+              { slug: 'pm',      name: 'Gestion de projet', color: '#FFC13D' },
+              { slug: 'ml',      name: 'Machine Learning',  color: '#F56751' },
+            ].map(({ slug, name, color }) => ({ slug, name, color, chapters: published[slug]?.size ?? 0 })).map(({ slug, name, color, chapters }) => (
               <Link
                 key={slug}
                 href={`/documentation?domain=${slug}`}
@@ -211,7 +212,7 @@ export default async function HomePage() {
                   style={{ background: `${color}20` }}
                 />
                 <div className="text-xs font-bold text-gray-800 leading-tight mb-1">{name}</div>
-                <div className="text-xs text-gray-400">{chapters} ch.</div>
+                <div className="text-xs text-gray-400">{chapters > 0 ? `${chapters} ch.` : 'bientôt'}</div>
               </Link>
             ))}
           </div>

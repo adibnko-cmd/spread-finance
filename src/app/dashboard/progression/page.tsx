@@ -3,15 +3,16 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { getLevel } from '@/types'
 import { getChaptersByDomain } from '@/lib/sanity/client'
+import { domainProgress } from '@/lib/content-stats'
 
 export const dynamic = 'force-dynamic'
 
-const DOMAIN_META: Record<string, { name: string; color: string; total: number }> = {
-  finance: { name: 'Finance de marché',        color: '#3183F7', total: 8 },
-  maths:   { name: 'Mathématiques financières', color: '#A855F7', total: 6 },
-  dev:     { name: 'Développement IT',          color: '#1a5fc8', total: 7 },
-  pm:      { name: 'Gestion de projet',         color: '#FFC13D', total: 5 },
-  ml:      { name: 'Machine Learning',          color: '#F56751', total: 6 },
+const DOMAIN_META: Record<string, { name: string; color: string }> = {
+  finance: { name: 'Finance de marché',        color: '#3183F7' },
+  maths:   { name: 'Mathématiques financières', color: '#A855F7' },
+  dev:     { name: 'Développement IT',          color: '#1a5fc8' },
+  pm:      { name: 'Gestion de projet',         color: '#FFC13D' },
+  ml:      { name: 'Machine Learning',          color: '#F56751' },
 }
 
 const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
@@ -40,14 +41,19 @@ export default async function ProgressionPage() {
   const { level, title: levelTitle, nextLevelXp, currentLevelXp } = getLevel(totalXp)
   const xpPct = Math.min(100, Math.round(((totalXp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100))
 
+  // SF-DOC-05 (2026-09-16) : totaux lus dans Sanity, chapitres distincts et publiés seulement.
+  const published = Object.fromEntries(
+    Object.keys(DOMAIN_META).map(d => [d, new Set(((sanityChapters ?? []) as Array<{ slug: string; domain: string }>).filter(c => c.domain === d).map(c => c.slug))])
+  )
   const domainStats = Object.entries(DOMAIN_META).map(([slug, meta]) => {
-    const dp = progress.filter(p => p.domain_slug === slug)
+    const v = domainProgress(progress, published, slug, ['validated'])
     return {
       slug, ...meta,
-      seen:      dp.filter(p => p.status !== 'not_started').length,
-      completed: dp.filter(p => p.status === 'completed' || p.status === 'validated').length,
-      validated: dp.filter(p => p.status === 'validated').length,
-      pct:       meta.total > 0 ? Math.round((dp.filter(p => p.status === 'validated').length / meta.total) * 100) : 0,
+      total:     v.total,
+      seen:      domainProgress(progress, published, slug, ['in_progress', 'completed', 'validated']).done,
+      completed: domainProgress(progress, published, slug, ['completed', 'validated']).done,
+      validated: v.done,
+      pct:       v.pct ?? 0,
     }
   })
 

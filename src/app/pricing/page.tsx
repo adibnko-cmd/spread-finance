@@ -22,7 +22,7 @@ const PLANS = [
     href: '/auth/register',
     disabled: false,
     features: [
-      { label: 'Documentation complète (32+ chapitres)', included: true },
+      { label: 'Documentation complète', included: true },
       { label: 'Quiz niveaux 1 & 2', included: true },
       { label: 'Dashboard personnel', included: true },
       { label: 'Gamification & badges', included: true },
@@ -45,7 +45,7 @@ const PLANS = [
     href: '/auth/register?plan=premium',
     disabled: false,
     features: [
-      { label: 'Documentation complète (32+ chapitres)', included: true },
+      { label: 'Documentation complète', included: true },
       { label: 'Quiz niveaux 1 & 2', included: true },
       { label: 'Dashboard personnel', included: true },
       { label: 'Gamification & badges', included: true },
@@ -68,7 +68,7 @@ const PLANS = [
     href: '#',
     disabled: true,
     features: [
-      { label: 'Documentation complète (32+ chapitres)', included: true },
+      { label: 'Documentation complète', included: true },
       { label: 'Quiz niveaux 1 & 2', included: true },
       { label: 'Dashboard personnel', included: true },
       { label: 'Gamification & badges', included: true },

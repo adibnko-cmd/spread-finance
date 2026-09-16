@@ -2,11 +2,15 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { CertificateDownloadButton } from './CertificateDownloadButton'
+import { CURRICULUM_TARGET, getPublishedChapters } from '@/lib/content-stats'
 
 export const metadata: Metadata = { title: 'Certificats — Spread Finance' }
 export const dynamic = 'force-dynamic'
 
-const DOMAIN_TOTALS: Record<string, number> = { finance: 8, maths: 6, dev: 7, pm: 5, ml: 6 }
+// SF-DOC-05 (2026-09-16) : l'objectif du certificat global reste le curriculum cible
+// (CURRICULUM_TARGET), jamais le nombre publié — sinon 3 chapitres publiés débloqueraient
+// le certificat. Les chapitres comptés, eux, doivent être publiés.
+const DOMAIN_TOTALS: Record<string, number> = CURRICULUM_TARGET
 const DOMAIN_NAMES:  Record<string, string>  = {
   finance: 'Finance de marché', maths: 'Maths financières',
   dev: 'Développement IT', pm: 'Gestion de projet', ml: 'Machine Learning',
@@ -14,27 +18,30 @@ const DOMAIN_NAMES:  Record<string, string>  = {
 const DOMAIN_COLORS: Record<string, string> = {
   finance: '#3183F7', maths: '#A855F7', dev: '#1a5fc8', pm: '#FFC13D', ml: '#F56751',
 }
-const TOTAL_CHAPTERS = Object.values(DOMAIN_TOTALS).reduce((s, n) => s + n, 0) // 32
+const TOTAL_CHAPTERS = Object.values(DOMAIN_TOTALS).reduce((s, n) => s + n, 0) // objectif du parcours complet
 
 export default async function CertificatesPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login?redirectTo=/dashboard/certificates')
 
-  const [{ data: progress }, { data: profile }] = await Promise.all([
-    supabase.from('chapter_progress').select('domain_slug, status').eq('user_id', user.id),
+  const [{ data: progress }, { data: profile }, published] = await Promise.all([
+    supabase.from('chapter_progress').select('chapter_slug, domain_slug, status').eq('user_id', user.id),
     supabase.from('profiles').select('first_name, last_name').eq('id', user.id).single(),
+    getPublishedChapters(),
   ])
   const userName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Certifié'
 
-  const validated = (progress ?? []).filter(p => p.status === 'validated')
+  const validated = [...new Map((progress ?? [])
+    .filter(p => p.status === 'validated' && published[p.domain_slug]?.has(p.chapter_slug))
+    .map(p => [p.chapter_slug, p])).values()]
   const totalValidated = validated.length
   const globalPct = Math.round((totalValidated / TOTAL_CHAPTERS) * 100)
   const certUnlocked = globalPct >= 80
 
   const domainProgress = Object.entries(DOMAIN_TOTALS).map(([slug, total]) => {
     const done = validated.filter(p => p.domain_slug === slug).length
-    return { slug, name: DOMAIN_NAMES[slug], color: DOMAIN_COLORS[slug], total, done, pct: Math.round((done / total) * 100) }
+    return { slug, name: DOMAIN_NAMES[slug], color: DOMAIN_COLORS[slug], total, done, pct: Math.min(100, Math.round((done / total) * 100)) }
   })
 
   return (

@@ -109,7 +109,6 @@ export default async function AboutPage() {
               <div className="flex flex-col gap-5">
                 {[
                   { n: '5', l: 'domaines couverts', sub: 'Finance, Maths, Dev, PM, ML' },
-                  { n: '32+', l: 'chapitres de documentation', sub: 'Gratuits et accessibles' },
                   { n: '100%', l: 'en français', sub: 'Conçu pour le marché francophone' },
                 ].map(({ n, l, sub }) => (
                   <div key={l} className="flex items-start gap-4">

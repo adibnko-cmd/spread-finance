@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AnalyticsCharts } from './AnalyticsCharts'
+import { getPublishedChapters } from '@/lib/content-stats'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +17,7 @@ export default async function AnalyticsPage() {
   const [xpRes, quizRes, progressRes, activityRes] = await Promise.all([
     supabase.from('xp_log').select('xp_earned, earned_at, source_type').eq('user_id', user.id).order('earned_at', { ascending: true }),
     supabase.from('quiz_results').select('score, passed, quiz_level, domain_slug, attempted_at').eq('user_id', user.id).order('attempted_at', { ascending: false }).limit(20),
-    supabase.from('chapter_progress').select('domain_slug, status, time_spent_seconds').eq('user_id', user.id),
+    supabase.from('chapter_progress').select('chapter_slug, domain_slug, status, time_spent_seconds').eq('user_id', user.id),
     supabase.from('activity_log').select('created_at, action_type').eq('user_id', user.id).gte('created_at', new Date(Date.now() - 30 * 86400000).toISOString()).order('created_at', { ascending: true }),
   ])
 
@@ -57,7 +58,9 @@ export default async function AnalyticsPage() {
   }))
 
   // Progression par domaine
-  const DOMAIN_TOTALS: Record<string, number> = { finance: 8, maths: 6, dev: 7, pm: 5, ml: 6 }
+  // SF-DOC-05 (2026-09-16) : totaux = chapitres publiés dans Sanity
+  const published = await getPublishedChapters()
+  const DOMAIN_TOTALS: Record<string, number> = Object.fromEntries(Object.entries(published).map(([d, s]) => [d, s.size]))
   const DOMAIN_NAMES: Record<string, string> = {
     finance: 'Finance', maths: 'Maths', dev: 'Dev IT', pm: 'Projet', ml: 'ML / IA',
   }
@@ -68,8 +71,8 @@ export default async function AnalyticsPage() {
   const domainChartData = Object.entries(DOMAIN_TOTALS).map(([slug, total]) => ({
     name: DOMAIN_NAMES[slug],
     color: DOMAIN_COLORS[slug],
-    validated: progress.filter(p => p.domain_slug === slug && p.status === 'validated').length,
-    seen: progress.filter(p => p.domain_slug === slug && p.status !== 'not_started').length,
+    validated: new Set(progress.filter(p => p.domain_slug === slug && p.status === 'validated' && published[slug]?.has(p.chapter_slug)).map(p => p.chapter_slug)).size,
+    seen: new Set(progress.filter(p => p.domain_slug === slug && p.status !== 'not_started' && published[slug]?.has(p.chapter_slug)).map(p => p.chapter_slug)).size,
     total,
     timeHours: Math.round(
       progress.filter(p => p.domain_slug === slug).reduce((s, p) => s + (p.time_spent_seconds ?? 0), 0) / 3600 * 10
