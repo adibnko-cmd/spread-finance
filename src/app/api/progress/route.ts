@@ -3,6 +3,7 @@
 // POST /api/progress — met à jour la progression d'un chapitre
 // ═══════════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/server'
+import { adminClient } from '@/lib/supabase/admin-server'
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { syncAchievements } from '@/lib/achievements-sync'
@@ -23,6 +24,10 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
   }
+
+  // SF-EVAL-03 (2026-09-16) — xp_log n'est plus écrivable avec la session de l'utilisateur
+  // (RLS, migration 016) : écriture par la clé service, côté serveur uniquement, après authentification.
+  const db = adminClient()
 
   const body = await request.json()
   const parsed = progressSchema.safeParse(body)
@@ -63,7 +68,7 @@ export async function POST(request: NextRequest) {
 
   // Ajouter XP si chapitre validé
   if (status === 'validated') {
-    await supabase.from('xp_log').insert({
+    await db.from('xp_log').insert({
       user_id:     user.id,
       source_type: 'chapter_validated',
       source_id:   chapter_slug,
@@ -79,7 +84,7 @@ export async function POST(request: NextRequest) {
       .eq('source_id', chapter_slug)
 
     if (count === 0) {
-      await supabase.from('xp_log').insert({
+      await db.from('xp_log').insert({
         user_id:     user.id,
         source_type: 'chapter_read',
         source_id:   chapter_slug,

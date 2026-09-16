@@ -3,6 +3,7 @@
 // POST /api/quiz — enregistre le résultat + déclenche validation
 // ═══════════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/server'
+import { adminClient } from '@/lib/supabase/admin-server'
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { sendQuizPassedEmail } from '@/lib/email'
@@ -25,6 +26,10 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  // SF-EVAL-03 (2026-09-16) — xp_log n'est plus écrivable avec la session de l'utilisateur
+  // (RLS, migration 016) : écriture par la clé service, côté serveur uniquement, après authentification.
+  const db = adminClient()
 
   const parsed = quizSubmitSchema.safeParse(await request.json())
   if (!parsed.success) {
@@ -79,7 +84,7 @@ export async function POST(request: NextRequest) {
     // XP + Cash selon niveau du quiz
     const xpMap: Record<number, number> = { 1: 15, 2: 25, 3: 50 }
     await Promise.all([
-      supabase.from('xp_log').insert({
+      db.from('xp_log').insert({
         user_id:     user.id,
         source_type: `quiz_level${quiz_level}` as 'quiz_level1' | 'quiz_level2' | 'quiz_level3',
         source_id:   chapter_slug,

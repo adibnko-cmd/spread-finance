@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { adminClient } from '@/lib/supabase/admin-server'
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 
@@ -19,6 +20,10 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // SF-EVAL-03 (2026-09-16) — xp_log n'est plus écrivable avec la session de l'utilisateur
+  // (RLS, migration 016) : écriture par la clé service, côté serveur uniquement, après authentification.
+  const db = adminClient()
+
   const parsed = schema.safeParse(await req.json())
   if (!parsed.success) return NextResponse.json({ error: 'Invalid data' }, { status: 400 })
 
@@ -36,7 +41,7 @@ export async function POST(req: NextRequest) {
 
   if (passed) {
     await Promise.all([
-      supabase.from('xp_log').insert({
+      db.from('xp_log').insert({
         user_id:     user.id,
         source_type: 'quiz_free',
         source_id:   mode,

@@ -1,6 +1,7 @@
 // SF-EVAL-01 (2026-09-16) — le score est calculé ici, depuis le document Sanity.
 // Avant : l'API faisait confiance au `correct_answers` envoyé par le navigateur.
 import { createClient } from '@/lib/supabase/server'
+import { adminClient } from '@/lib/supabase/admin-server'
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { EVAL_DOMAINS, correctIndexOf, isPremiumPlan, loadEvaluation, type QuestionCorrection } from '@/lib/evaluation'
@@ -20,6 +21,10 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+
+  // SF-EVAL-03 (2026-09-16) — xp_log et evaluation_results ne sont plus écrivables avec la session de l'utilisateur
+  // (RLS, migration 016) : écriture par la clé service, côté serveur uniquement, après authentification.
+  const db = adminClient()
 
   const parsed = evalSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Données invalides' }, { status: 400 })
@@ -62,7 +67,7 @@ export async function POST(request: NextRequest) {
     alreadyPassed = (count ?? 0) > 0
   }
 
-  const { data: result, error } = await supabase
+  const { data: result, error } = await db
     .from('evaluation_results')
     .insert({
       user_id:          user.id,
@@ -85,7 +90,7 @@ export async function POST(request: NextRequest) {
   const xp_earned = passed && !alreadyPassed ? (XP_MAP[difficulty_level] ?? 25) : 0
 
   if (xp_earned > 0) {
-    await supabase.from('xp_log').insert({
+    await db.from('xp_log').insert({
       user_id:     user.id,
       source_type: `evaluation_level${difficulty_level}`,
       source_id:   `${domain_slug}-part${part}`,
