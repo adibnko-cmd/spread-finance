@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { getChaptersByDomain } from '@/lib/sanity/client'
+import { getChaptersByDomain, getEvaluationsByDomain } from '@/lib/sanity/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,6 +45,38 @@ export default async function QuizPage() {
 
   const { data: profile } = await supabase.from('profiles').select('plan').eq('id', user.id).single()
   const isPremium = profile?.plan === 'premium' || profile?.plan === 'platinum'
+
+  // SF-QUIZ-01 (2026-09-15) — le bouton « évaluation » de cette page renvoyait vers la Road Map
+  // au lieu de lancer une évaluation. On cible désormais la prochaine évaluation à passer :
+  // la première partie (ordre domaine → partie, celui de la Road Map) sans évaluation réussie ;
+  // si tout est réussi, la première partie ; s'il n'y a aucune évaluation disponible, on retombe sur la Road Map.
+  const passedParts = new Set(
+    evalList.filter(e => e.passed).map(e => `${e.domain_slug}-${e.part}`)
+  )
+  const parts: Array<{ domain: string; part: number; partTitle?: string }> = []
+  const seenParts = new Set<string>()
+  for (const c of (sanityChapters ?? []) as Array<{ domain: string; part: number; partTitle?: string }>) {
+    if (!c.domain || typeof c.part !== 'number') continue
+    const key = `${c.domain}-${c.part}`
+    if (seenParts.has(key)) continue
+    seenParts.add(key)
+    parts.push({ domain: c.domain, part: c.part, partTitle: c.partTitle })
+  }
+  // Retour de test d'Adib (2026-09-16) : la Partie 1 de Finance n'a pas d'évaluation dans Sanity,
+  // le bouton menait donc à « Évaluation non disponible ». On ne cible que les parties dont
+  // l'évaluation de niveau 1 EXISTE et porte des questions.
+  const evalDocs = (await Promise.all(
+    Object.keys(DOMAIN_META).map(d => getEvaluationsByDomain(d).catch(() => []))
+  )).flat() as Array<{ domain: string; part: number; level: number; questionCount?: number }>
+  const availableParts = new Set(
+    evalDocs.filter(e => e.level === 1 && (e.questionCount ?? 0) > 0).map(e => `${e.domain}-${e.part}`)
+  )
+  const candidates = parts.filter(p => availableParts.has(`${p.domain}-${p.part}`))
+  const nextEval = candidates.find(p => !passedParts.has(`${p.domain}-${p.part}`)) ?? candidates[0] ?? null
+  const nextEvalHref  = nextEval ? `/evaluation/${nextEval.domain}/${nextEval.part}/1` : '/dashboard/roadmap'
+  const nextEvalLabel = nextEval
+    ? `Passer l'évaluation → ${DOMAIN_META[nextEval.domain]?.name ?? nextEval.domain} · Partie ${nextEval.part}`
+    : 'Voir la Road Map →'
 
   return (
     <div className="p-5 space-y-6">
@@ -183,9 +215,14 @@ export default async function QuizPage() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm font-black text-gray-800">Évaluations QCM</div>
-          <Link href="/dashboard/roadmap" className="text-xs font-bold text-white px-4 py-2 rounded-xl" style={{ background: '#1C1C2E' }}>
-            Road Map →
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/roadmap" className="text-xs font-semibold" style={{ color: '#3183F7' }}>
+              Road Map
+            </Link>
+            <Link href={nextEvalHref} className="text-xs font-bold text-white px-4 py-2 rounded-xl" style={{ background: '#1C1C2E' }}>
+              {nextEvalLabel}
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-4 gap-3 mb-4">
@@ -212,8 +249,8 @@ export default async function QuizPage() {
               <div className="text-2xl mb-2">🎯</div>
               <p className="text-xs font-semibold text-gray-600 mb-1">Aucune évaluation passée</p>
               <p className="text-[10px] text-gray-400 mb-4">Terminez une partie pour débloquer l&apos;évaluation</p>
-              <Link href="/dashboard/roadmap" className="inline-block text-xs font-bold text-white px-5 py-2.5 rounded-xl" style={{ background: '#3183F7' }}>
-                Voir la Road Map →
+              <Link href={nextEvalHref} className="inline-block text-xs font-bold text-white px-5 py-2.5 rounded-xl" style={{ background: '#3183F7' }}>
+                {nextEvalLabel}
               </Link>
             </div>
           ) : (
