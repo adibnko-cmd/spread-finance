@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getEvaluation } from '@/lib/sanity/client'
+import { isPremiumPlan, loadEvaluation, toPublicEvaluation } from '@/lib/evaluation'
 import EvaluationClient from './EvaluationClient'
 
 const DOMAIN_NAMES: Record<string, string> = {
@@ -34,13 +34,14 @@ export default async function EvaluationPage({
   const { data: profile } = await supabase.from('profiles').select('plan').eq('id', user.id).single()
   userPlan = profile?.plan ?? 'free'
 
-  const isPremium = userPlan === 'premium' || userPlan === 'platinum'
+  const isPremium = isPremiumPlan(userPlan)
 
   if (level === 3 && !isPremium) {
     redirect(`/evaluation/${domain}/${part}/1`)
   }
 
-  const evaluation = await getEvaluation(domain, part, level).catch(() => null)
+  // SF-EVAL-01 : questions servies SANS `isCorrect` ni `explanation` — la correction vient de l'API
+  const evaluation = toPublicEvaluation(await loadEvaluation(domain, part, level))
 
   return (
     <EvaluationClient

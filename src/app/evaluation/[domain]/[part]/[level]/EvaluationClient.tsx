@@ -3,12 +3,10 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 
-interface Answer   { text: string; isCorrect: boolean }
-interface Question { _key?: string; text: string; competency?: string; explanation?: string; answers: Answer[] }
-interface Evaluation {
-  _id: string; domain: string; part: number; partTitle: string; level: number
-  questions: Question[]
-}
+// SF-EVAL-01 (2026-09-16) : les questions arrivent sans bonne réponse ni explication.
+// Chaque réponse validée est corrigée par /api/evaluation/check ; le score, les XP et
+// la correction complète viennent de /api/evaluation à la soumission.
+import type { PublicEvaluation as Evaluation, QuestionCorrection } from '@/lib/evaluation'
 
 interface Props {
   domain:     string
@@ -41,7 +39,9 @@ export default function EvaluationClient({ domain, domainName, part, level, eval
   const [userAnswers, setUserAnswers] = useState<(number | null)[]>([])
   const [elapsed, setElapsed]   = useState(0)
   const [loading, setLoading]   = useState(false)
-  const [result, setResult]     = useState<{ score: number; passed: boolean; xp_earned: number } | null>(null)
+  const [result, setResult]     = useState<{ score: number; passed: boolean; xp_earned: number; correct_answers: number; correction: QuestionCorrection[] } | null>(null)
+  const [feedback, setFeedback] = useState<{ isCorrect: boolean; correctIndex: number } | null>(null)
+  const [error, setError]       = useState<string | null>(null)
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -57,21 +57,37 @@ export default function EvaluationClient({ domain, domainName, part, level, eval
   const startEval = () => {
     setPhase('quiz'); setCurrent(0); setSelected(null)
     setRevealed(false); setUserAnswers([]); setElapsed(0)
+    setFeedback(null); setResult(null); setError(null)
   }
 
-  const confirmAnswer = () => { if (selected !== null) setRevealed(true) }
+  const confirmAnswer = async () => {
+    if (selected === null || loading) return
+    setLoading(true); setError(null)
+    try {
+      const res = await fetch('/api/evaluation/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain_slug: domain, part, difficulty_level: level, question_index: current, answer: selected }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'Correction indisponible'); return }
+      setFeedback({ isCorrect: data.isCorrect, correctIndex: data.correctIndex })
+      setRevealed(true)
+    } catch {
+      setError('Correction indisponible — vérifie ta connexion')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const next = async () => {
     const newAnswers = [...userAnswers, selected]
 
     if (current + 1 < questions.length) {
       setUserAnswers(newAnswers); setCurrent(c => c + 1)
-      setSelected(null); setRevealed(false)
+      setSelected(null); setRevealed(false); setFeedback(null)
     } else {
       if (timerRef.current) clearInterval(timerRef.current)
-      const correct = newAnswers.filter(
-        (ans, i) => ans !== null && questions[i].answers[ans!]?.isCorrect
-      ).length
 
       setLoading(true)
       try {
@@ -81,16 +97,19 @@ export default function EvaluationClient({ domain, domainName, part, level, eval
           body: JSON.stringify({
             domain_slug:      domain,
             part,
-            part_title:       evaluation?.partTitle,
             difficulty_level: level,
-            total_questions:  questions.length,
-            correct_answers:  correct,
             time_seconds:     elapsed,
             answers:          newAnswers,
           }),
         })
         const data = await res.json()
-        setResult({ score: data.score ?? 0, passed: data.passed ?? false, xp_earned: data.xp_earned ?? 0 })
+        if (!res.ok) setError(data.error ?? 'Résultat non enregistré')
+        setResult({
+          score: data.score ?? 0, passed: data.passed ?? false, xp_earned: data.xp_earned ?? 0,
+          correct_answers: data.correct_answers ?? 0, correction: data.correction ?? [],
+        })
+      } catch {
+        setError('Résultat non enregistré — vérifie ta connexion')
       } finally {
         setUserAnswers(newAnswers); setLoading(false); setPhase('results')
       }
@@ -229,21 +248,21 @@ export default function EvaluationClient({ domain, domainName, part, level, eval
     const xpEarned   = result?.xp_earned ?? 0
     const scoreColor = passed ? '#36D399' : score >= 50 ? '#FFC13D' : '#F56751'
 
+    const correction = result?.correction ?? []
+
     // Calcul par compétence
     const competencyMap = new Map<string, { correct: number; total: number }>()
     questions.forEach((q, i) => {
       const comp = q.competency ?? 'Général'
       const entry = competencyMap.get(comp) ?? { correct: 0, total: 0 }
       entry.total++
-      if (userAnswers[i] !== null && userAnswers[i] !== undefined && q.answers[userAnswers[i]!]?.isCorrect) {
+      if (userAnswers[i] !== null && userAnswers[i] !== undefined && userAnswers[i] === correction[i]?.correctIndex) {
         entry.correct++
       }
       competencyMap.set(comp, entry)
     })
 
-    const correctCount = userAnswers.filter(
-      (ans, i) => ans !== null && questions[i].answers[ans!]?.isCorrect
-    ).length
+    const correctCount = result?.correct_answers ?? 0
 
     return (
       <div className="min-h-screen p-6" style={{ background: '#F5F6F8' }}>
@@ -261,6 +280,7 @@ export default function EvaluationClient({ domain, domainName, part, level, eval
             <div className="text-xs text-gray-400 mb-4">
               {correctCount}/{totalQ} bonnes réponses · {formatTime(elapsed)}
             </div>
+            {error && <div className="text-xs font-semibold mb-4" style={{ color: '#c0392b' }}>{error}</div>}
 
             {xpEarned > 0 && (
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl mb-4" style={{ background: '#1C1C2E' }}>
@@ -330,7 +350,8 @@ export default function EvaluationClient({ domain, domainName, part, level, eval
               </div>
               {questions.map((question, qi) => {
                 const userAns   = userAnswers[qi]
-                const isCorrect = userAns !== null && userAns !== undefined && question.answers[userAns]?.isCorrect
+                const corr      = correction[qi]
+                const isCorrect = userAns !== null && userAns !== undefined && userAns === corr?.correctIndex
 
                 return (
                   <div key={qi} className="bg-white rounded-xl p-5" style={{ border: '1.5px solid #E8E8E8' }}>
@@ -355,26 +376,27 @@ export default function EvaluationClient({ domain, domainName, part, level, eval
                     <div className="flex flex-col gap-1.5 mb-3 pl-7">
                       {question.answers.map((ans, ai) => {
                         const isUser = ai === userAns
+                        const isGood = ai === corr?.correctIndex
                         let bg = '#F9FAFB', border = '#E8E8E8', textColor = '#6B7280'
-                        if (ans.isCorrect) { bg = '#E6FAF3'; border = '#36D399'; textColor = '#0d7a56' }
+                        if (isGood) { bg = '#E6FAF3'; border = '#36D399'; textColor = '#0d7a56' }
                         else if (isUser)   { bg = '#FEF0EE'; border = '#F56751'; textColor = '#c0392b' }
                         return (
                           <div key={ai} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
                             style={{ background: bg, border: `1.5px solid ${border}`, color: textColor }}
                           >
-                            {ans.isCorrect && <span className="font-bold flex-shrink-0">✓</span>}
-                            {isUser && !ans.isCorrect && <span className="font-bold flex-shrink-0">✗</span>}
-                            {!ans.isCorrect && !isUser && <span className="opacity-0 flex-shrink-0">·</span>}
-                            <span className={ans.isCorrect || isUser ? 'font-semibold' : ''}>{ans.text}</span>
+                            {isGood && <span className="font-bold flex-shrink-0">✓</span>}
+                            {isUser && !isGood && <span className="font-bold flex-shrink-0">✗</span>}
+                            {!isGood && !isUser && <span className="opacity-0 flex-shrink-0">·</span>}
+                            <span className={isGood || isUser ? 'font-semibold' : ''}>{ans.text}</span>
                           </div>
                         )
                       })}
                     </div>
 
-                    {question.explanation && (
+                    {corr?.explanation && (
                       <div className="pl-7 text-[11px] text-gray-600 leading-relaxed p-3 rounded-lg" style={{ background: '#EBF2FF', border: '1.5px solid #C7DCFF' }}>
                         <span className="font-bold text-blue-700">Explication : </span>
-                        {question.explanation}
+                        {corr.explanation}
                       </div>
                     )}
                   </div>
@@ -448,8 +470,9 @@ export default function EvaluationClient({ domain, domainName, part, level, eval
           <div className="flex flex-col gap-2.5 mb-6">
             {q.answers.map((ans, ai) => {
               let bg = '#fff', border = '#E8E8E8', textCol = '#374151'
+              const isGood = revealed && ai === feedback?.correctIndex
               if (revealed) {
-                if (ans.isCorrect)      { bg = '#E6FAF3'; border = '#36D399'; textCol = '#0d7a56' }
+                if (isGood)      { bg = '#E6FAF3'; border = '#36D399'; textCol = '#0d7a56' }
                 else if (ai === selected) { bg = '#FEF0EE'; border = '#F56751'; textCol = '#c0392b' }
                 else                      { bg = '#F9FAFB'; textCol = '#9CA3AF'; border = '#F0F0F0' }
               } else if (ai === selected) {
@@ -467,9 +490,9 @@ export default function EvaluationClient({ domain, domainName, part, level, eval
                   <div
                     className="w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 text-[10px] font-bold"
                     style={{
-                      borderColor: revealed && ans.isCorrect ? '#36D399' : revealed && ai === selected && !ans.isCorrect ? '#F56751' : ai === selected ? color : '#D1D5DB',
-                      background:  revealed && ans.isCorrect ? '#36D399' : revealed && ai === selected && !ans.isCorrect ? '#F56751' : ai === selected ? color : 'transparent',
-                      color:       ai === selected || (revealed && ans.isCorrect) ? '#fff' : '#9CA3AF',
+                      borderColor: isGood ? '#36D399' : revealed && ai === selected ? '#F56751' : ai === selected ? color : '#D1D5DB',
+                      background:  isGood ? '#36D399' : revealed && ai === selected ? '#F56751' : ai === selected ? color : 'transparent',
+                      color:       ai === selected || isGood ? '#fff' : '#9CA3AF',
                     }}
                   >
                     {String.fromCharCode(65 + ai)}
@@ -481,27 +504,30 @@ export default function EvaluationClient({ domain, domainName, part, level, eval
           </div>
 
           {/* Feedback révélé — sans explication (réservée aux résultats Premium) */}
-          {revealed && (
+          {revealed && feedback && (
             <div
               className="p-3 rounded-xl mb-4 text-xs font-semibold"
               style={{
-                background: userAnswers.length < questions.length && questions[current]?.answers[selected ?? -1]?.isCorrect ? '#E6FAF3' : '#FEF0EE',
-                color:      questions[current]?.answers[selected ?? -1]?.isCorrect ? '#0d7a56' : '#c0392b',
+                background: feedback.isCorrect ? '#E6FAF3' : '#FEF0EE',
+                color:      feedback.isCorrect ? '#0d7a56' : '#c0392b',
               }}
             >
-              {questions[current]?.answers[selected ?? -1]?.isCorrect ? '✓ Bonne réponse !' : '✗ Mauvaise réponse'}
+              {feedback.isCorrect ? '✓ Bonne réponse !' : '✗ Mauvaise réponse'}
             </div>
+          )}
+          {error && !revealed && (
+            <div className="p-3 rounded-xl mb-4 text-xs font-semibold" style={{ background: '#FEF0EE', color: '#c0392b' }}>{error}</div>
           )}
 
           {/* Bouton */}
           {!revealed ? (
             <button
               onClick={confirmAnswer}
-              disabled={selected === null}
+              disabled={selected === null || loading}
               className="w-full py-3 rounded-xl text-sm font-bold text-white"
               style={{ background: selected !== null ? color : '#D1D5DB', cursor: selected !== null ? 'pointer' : 'not-allowed' }}
             >
-              Valider
+              {loading ? 'Correction...' : 'Valider'}
             </button>
           ) : (
             <button
